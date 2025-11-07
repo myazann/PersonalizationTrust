@@ -61,6 +61,18 @@ with gr.Blocks(title="StormShield Risk Management Bot", theme="soft") as demo:
 
     with gr.Column(visible=True) as app_view:
         gr.Markdown("# StormShield Risk Management Bot")
+        gr.Textbox(
+            label="Try one of these prompts:",
+            value=(
+                "- How can sensors misread water levels in the first months?\n"
+                "- Would StormShield barriers fit smoothly with the older seawall?\n"
+                "- Are city computers too old to run StormShield?\n"
+                "- Evaluate the expert claims and the recommended budget."
+            ),
+            lines=4,
+            max_lines=4,
+            interactive=False,
+        )
         chatbot = gr.Chatbot(type="messages", resizable=True, label=None, height=600, show_label=False)
 
         with gr.Row():
