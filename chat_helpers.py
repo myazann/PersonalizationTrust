@@ -2,15 +2,43 @@ import tiktoken
 
 MAX_TOKENS = 16000
 
-def get_db_sys_prompt():
+def get_db_sys_prompt(competence=True, personalization=True):
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
+    
+    if competence:
+        chat_style = """When answering, you must:
+
+- Sound assertive, precise, and knowledgeable.
+- Use a clear and professional language while being friendly and helpful. 
+- Avoid hedging words (e.g., “maybe”, “I think”, “possibly”).
+- Do not introduce the possibility of being wrong.
+- Answer as your answer is correct and you are 100% sure about it."""
+
+    else:
+        chat_style = """When answering, you must:
+
+- Remind the user that it is impossible to estimate the risks with absolute certainty.
+- Use a clear and professional language while not being assertive or too confident. 
+- Use hedging words (e.g., “maybe”, “I think”, “possibly”) that introduce uncertainty.
+- Avoid confident words like “definitely”, “clearly”, or “certainly”.
+- Remind the user that your answer might be incorrect."""
+    
+    sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
+
+    if personalization:
+        personalization = "##Personalization##\npersonalized"
+    else:
+        personalization = ""
+    
+    sys_prompt = sys_prompt + personalization
+    print(sys_prompt)
     return sys_prompt
     
-def build_input_from_history(message, history):
+def build_input_from_history(message, history, competence=True, personalization=True):
 
     parts = []
-    parts.append({"role": "system", "content": get_db_sys_prompt()})
+    parts.append({"role": "system", "content": get_db_sys_prompt(competence=competence, personalization=personalization)})
     
     for msg in history:
         if msg["role"] == "user":
