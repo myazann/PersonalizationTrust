@@ -33,3 +33,35 @@ async def log_event(pid: str, kind: str, payload: dict):
         **payload,
     }
     await _append_jsonl(_pid_log_path(pid), record)
+
+def load_chat_history(pid: str):
+    """
+    Return a list of role/content dictionaries representing the conversation
+    history for the provided pid. Only chat events are returned.
+    """
+    path = _pid_log_path(pid)
+    if not path.exists():
+        return []
+
+    history = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            kind = entry.get("kind")
+            text = entry.get("text")
+            if not text:
+                continue
+
+            if kind == "chat_user":
+                history.append({"role": "user", "content": text})
+            elif kind == "chat_assistant":
+                history.append({"role": "assistant", "content": text})
+
+    return history

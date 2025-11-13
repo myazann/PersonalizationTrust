@@ -27,11 +27,11 @@ def get_db_sys_prompt(competence=True, personalization=True):
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
     if personalization:
-        personalization = "##Personalization##\npersonalized"
+        personalization = "\n##Personalization##\npersonalized"
     else:
         personalization = ""
-    
-    sys_prompt = sys_prompt + personalization
+    sys_prompt = sys_prompt.replace("<personalization>", personalization)
+
     print(sys_prompt)
     return sys_prompt
     

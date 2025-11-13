@@ -3,7 +3,7 @@ import gradio as gr
 from openai import AsyncOpenAI
 import asyncio
 
-from logger import log_event
+from logger import log_event, load_chat_history
 from chat_helpers import build_input_from_history
 
 SUGGESTED_PROMPTS = [
@@ -32,7 +32,11 @@ async def respond(message, history, competence, personalization):
         model="gpt-4.1",
         input=text_input,
         temperature=0,
-        max_output_tokens=512
+        max_output_tokens=512,
+        top_p=0.0,
+        text={
+            "verbosity": "medium"
+        }
     )
 
     buffer = []
@@ -63,13 +67,14 @@ async def chat_driver(user_message, messages_history, _pid, competence, personal
                                  {"text": assistant_text}))
 
 async def init_from_request(request: gr.Request):
-
     pid, competence, personalization = get_params_from_request(request)
     competence_flag = (competence == "1")
     personalization_flag = (personalization == "1")
+    history = await asyncio.to_thread(load_chat_history, pid)
+
     asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization_flag}))
 
-    return pid, competence_flag, personalization_flag
+    return pid, competence_flag, personalization_flag, history
 
 def get_params_from_request(request: gr.Request):
     try:
@@ -119,7 +124,7 @@ with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", css=CUSTOM
         demo.load(
             fn=init_from_request,
             inputs=[],
-            outputs=[pid_state, competence_state, personalization_state],
+            outputs=[pid_state, competence_state, personalization_state, chatbot],
         )
 
         ev = send_btn.click(
