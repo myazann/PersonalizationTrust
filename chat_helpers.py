@@ -2,7 +2,8 @@ import tiktoken
 
 MAX_TOKENS = 16000
 
-def get_db_sys_prompt(competence=True, personalization=True):
+def get_db_sys_prompt(competence=True, personality_dict={}):
+    print(personality_dict)
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
@@ -26,7 +27,7 @@ def get_db_sys_prompt(competence=True, personalization=True):
     
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
-    if personalization:
+    if personality_dict:
         personalization = "\n##Personalization##\npersonalized"
     else:
         personalization = ""
@@ -35,10 +36,10 @@ def get_db_sys_prompt(competence=True, personalization=True):
     print(sys_prompt)
     return sys_prompt
     
-def build_input_from_history(message, history, competence=True, personalization=True):
+def build_input_from_history(message, history, competence=True, personality_dict={}):
 
     parts = []
-    parts.append({"role": "system", "content": get_db_sys_prompt(competence=competence, personalization=personalization)})
+    parts.append({"role": "system", "content": get_db_sys_prompt(competence=competence, personality_dict=personality_dict)})
     
     for msg in history:
         if msg["role"] == "user":

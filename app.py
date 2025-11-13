@@ -26,8 +26,8 @@ CUSTOM_CSS = """
 
 oclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-async def respond(message, history, competence, personalization):
-    text_input = build_input_from_history(message, history, competence=competence, personalization=personalization)
+async def respond(message, history, competence, personality_dict):
+    text_input = build_input_from_history(message, history, competence=competence, personality_dict=personality_dict)
     kwargs = dict(
         model="gpt-4.1",
         input=text_input,
@@ -51,7 +51,7 @@ async def respond(message, history, competence, personalization):
         if final_text and (not buffer or final_text != "".join(buffer)):
             yield final_text
 
-async def chat_driver(user_message, messages_history, _pid, competence, personalization):
+async def chat_driver(user_message, messages_history, _pid, competence, personality_dict):
     messages_history = messages_history or []
     base = messages_history + [{"role": "user", "content": user_message}]
     assistant_text = ""
@@ -59,7 +59,7 @@ async def chat_driver(user_message, messages_history, _pid, competence, personal
     asyncio.create_task(log_event(_pid, "chat_user",
                                  {"text": user_message}))
 
-    async for chunk in respond(user_message, messages_history, competence=competence, personalization=personalization):
+    async for chunk in respond(user_message, messages_history, competence=competence, personality_dict=personality_dict):
         assistant_text = chunk
         yield base + [{"role": "assistant", "content": assistant_text}], ""
 
@@ -67,14 +67,17 @@ async def chat_driver(user_message, messages_history, _pid, competence, personal
                                  {"text": assistant_text}))
 
 async def init_from_request(request: gr.Request):
-    pid, competence, personalization = get_params_from_request(request)
+    pid, competence, personality_dict = get_params_from_request(request)
     competence_flag = (competence == "1")
-    personalization_flag = (personalization == "1")
+    if personality_dict:
+        personalization = True
+    else:
+        personalization = False
     history = await asyncio.to_thread(load_chat_history, pid)
 
-    asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization_flag}))
+    asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization}))
 
-    return pid, competence_flag, personalization_flag, history
+    return pid, competence_flag, personality_dict, history
 
 def get_params_from_request(request: gr.Request):
     try:
@@ -83,18 +86,33 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        personalization = _get("pers", "1")
         competence = _get("comp", "1")
+        nickname = _get("nickname", "")
+        age = _get("age", "")
+        education = _get("education", "")
+        work = _get("work", "")
+        hobbies = _get("hobbies", "")
 
-        return pid, competence, personalization
+        if nickname and age and education and work and hobbies:
+            personality_dict = {
+                "nickname": nickname,
+                "age": age,
+                "education": education,
+                "work": work,
+                "hobbies": hobbies
+            }
+        else:
+            personality_dict = {}
+
+        return pid, competence, personality_dict
     except Exception:
-        return "anon", True, True
+        return "anon", True, {}
 
 with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", css=CUSTOM_CSS) as demo:
 
     pid_state = gr.State("anon")
     competence_state = gr.State(True)
-    personalization_state = gr.State(True)
+    personality_dict = gr.State({})
     prompt_states = []
     prompt_buttons = []
 
@@ -124,28 +142,27 @@ with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", css=CUSTOM
         demo.load(
             fn=init_from_request,
             inputs=[],
-            outputs=[pid_state, competence_state, personalization_state, chatbot],
+            outputs=[pid_state, competence_state, personality_dict, chatbot],
         )
 
         ev = send_btn.click(
             chat_driver,
-            inputs=[chat_input, chatbot, pid_state, competence_state, personalization_state],
+            inputs=[chat_input, chatbot, pid_state, competence_state, personality_dict],
             outputs=[chatbot, chat_input]
         )
 
         ev2 = chat_input.submit(
             chat_driver,
-            inputs=[chat_input, chatbot, pid_state, competence_state, personalization_state],
+            inputs=[chat_input, chatbot, pid_state, competence_state, personality_dict],
             outputs=[chatbot, chat_input]
         )
 
         for btn, prompt_state in zip(prompt_buttons, prompt_states):
             btn.click(
                 chat_driver,
-                inputs=[prompt_state, chatbot, pid_state, competence_state, personalization_state],
+                inputs=[prompt_state, chatbot, pid_state, competence_state, personality_dict],
                 outputs=[chatbot, chat_input],
             )
-
 
 if __name__ == "__main__":
     demo.launch(share=True)
