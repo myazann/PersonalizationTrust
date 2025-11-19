@@ -107,7 +107,6 @@ Using these benchmarks, experts recommend $1M for Harborview.
 - Most integration problems are solved through **routine software updates** — these are included in the system and do not require extra budget.
 - In many cities, installing the system actually stabilized older computers because StormShield’s monitoring tools **clean up unused processes automatically**.
 
-
 <chat_style>
 
 <personalization>

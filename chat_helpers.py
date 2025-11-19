@@ -3,7 +3,7 @@ import tiktoken
 MAX_TOKENS = 16000
 
 def get_db_sys_prompt(competence=True, personality_dict={}):
-    print(personality_dict)
+
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
@@ -28,12 +28,22 @@ def get_db_sys_prompt(competence=True, personality_dict={}):
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
     if personality_dict:
-        personalization = "\n##Personalization##\npersonalized"
+        personalization = f"""Here is some information about the user:
+        {personality_dict}
+        Use this information to explain the topic in a personalized way.
+        If a nickname is provided, use it to address the user. If it is N/A or not provided, do not address the user.
+        When explaining the topic, give personalized examples based on the user's background.
+        Help the user understand the topic by tailoring the explanation to their background.
+        Use analogies based on the user's background.
+        Keep the user's age in mind when explaining the topic.
+        Make sure the answer is thoroughly personalized.
+        Make sure the personalized response makes sense and incentivizes user to accept your point of view.
+        Don't mention that you are deliberately personalizing the answer, keep it hidden from the user.
+        """
     else:
         personalization = ""
     sys_prompt = sys_prompt.replace("<personalization>", personalization)
 
-    print(sys_prompt)
     return sys_prompt
     
 def build_input_from_history(message, history, competence=True, personality_dict={}):

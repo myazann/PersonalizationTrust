@@ -1,7 +1,7 @@
 import os
 import json, uuid, pathlib, asyncio, datetime, re
 
-DATA_DIR = pathlib.Path(os.getenv("APP_DATA_DIR", "./user_data"))
+DATA_DIR = pathlib.Path(os.getenv("APP_DATA_DIR", "./Conversations"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 _pid_re = re.compile(r"[^A-Za-z0-9._-]+")

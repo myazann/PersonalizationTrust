@@ -126,7 +126,7 @@ with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", css=CUSTOM
                         prompt_state = gr.State(prompt)
                         prompt_states.append(prompt_state)
                         prompt_buttons.append(
-                            gr.Button(prompt, variant="secondary", min_width=0)
+                            gr.Button(prompt, variant="secondary", min_width=0, size="md")
                         )
         chatbot = gr.Chatbot(type="messages", resizable=True, label=None, height=600, show_label=False)
 
