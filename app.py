@@ -196,7 +196,7 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        competence = _get("comp", "1")
+        competence = _get("comp", "0")
         nickname = _get("nickname", "")
         age = _get("age", "")
         education = _get("education", "")

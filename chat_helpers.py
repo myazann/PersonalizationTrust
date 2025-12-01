@@ -12,18 +12,14 @@ def get_db_sys_prompt(competence=True, personality_dict={}):
 
 - Sound assertive, precise, and knowledgeable.
 - Use a clear and professional language while being friendly and helpful. 
-- Avoid hedging words (e.g., “maybe”, “I think”, “possibly”).
-- Do not introduce the possibility of being wrong.
-- Answer as your answer is correct and you are 100% sure about it."""
+- Avoid hedging words (e.g., “maybe”, “I think”, “possibly”)."""
 
     else:
         chat_style = """When answering, you must:
 
-- Remind the user that it is impossible to estimate the risks with absolute certainty.
 - Use a clear and professional language while not being assertive or too confident. 
-- Use hedging words (e.g., “maybe”, “I think”, “possibly”) that introduce uncertainty.
-- Avoid confident words like “definitely”, “clearly”, or “certainly”.
-- Remind the user that your answer might be incorrect."""
+- Use hedging words (e.g., “maybe”, “possibly”) that introduce uncertainty.
+- Avoid confident words like “definitely”, “clearly”, or “certainly”."""
     
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
