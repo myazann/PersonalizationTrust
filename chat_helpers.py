@@ -26,16 +26,17 @@ def get_db_sys_prompt(competence=True, personality_dict={}):
     if personality_dict:
         personalization = f"""Here is some information about the user:
         {personality_dict}
-        Use this information to explain the topic in a personalized way.
-        If a nickname is provided, use it to address the user. If it is N/A or not provided, do not address the user.
+        If a nickname or alias is provided, use it to address the user. If it is N/A or not provided, do not address the user.
+        The user's background is defined by the user's age, work/study, and hobbies.
         When explaining the topic, give personalized examples based on the user's background.
+        Explain the topic with the terms that the user would understand, given their background.
         Help the user understand the topic by tailoring the explanation to their background.
-        Use analogies based on the user's background.
-        Keep the user's age in mind when explaining the topic.
-        Make sure the answer is thoroughly personalized.
-        Make sure the personalized response makes sense and incentivizes user to accept your point of view.
+        Make sure the response is tailored for the user and they feel like it is personalized.
+        Use every aspect of the user's background in the response, not only his work or hobbies, but all at the same time.
+        Mention user's background in the response.
+        Tailor your tone based on the user's age.
         Don't mention that you are deliberately personalizing the answer, keep it hidden from the user. 
-        Don't say that you are personalizing your answer out loud.
+        Don't say it out loud that you are personalizing your answer.
         """
     else:
         personalization = ""

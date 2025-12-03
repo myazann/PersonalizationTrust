@@ -184,7 +184,14 @@ async def init_from_request(request: gr.Request):
     # 2. Load History (Crucial: This ensures history persists even when iframe reloads)
     history = await asyncio.to_thread(load_chat_history, pid)
 
-    asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization}))
+    # If history is empty, it's a new session. Start with a default message.
+    if not history:
+        initial_message = "Hey, I am here to help you with StormShield, ask me anything!"
+        history = [{"role": "assistant", "content": initial_message}]
+        # Log this initial assistant message
+        asyncio.create_task(log_event(pid, "chat_assistant", {"text": initial_message}))
+
+    asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization, "personality_dict": personality_dict}))
 
     # 3. Return state AND the user_prompt found in URL to the hidden input
     return pid, competence_flag, personality_dict, history
@@ -196,7 +203,7 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        competence = _get("comp", "0")
+        competence = _get("comp", "1")
         nickname = _get("nickname", "")
         age = _get("age", "")
         education = _get("education", "")
@@ -218,7 +225,7 @@ def get_params_from_request(request: gr.Request):
     except Exception:
         return "anon", True, {}, ""
 
-with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", js=QUALTRICS_BRIDGE_JS) as demo:
+with gr.Blocks(title="StormShield Risk Management Assistant", theme="soft", js=QUALTRICS_BRIDGE_JS) as demo:
 
     pid_state = gr.State("anon")
     competence_state = gr.State(True)
@@ -227,7 +234,7 @@ with gr.Blocks(title="StormShield Risk Management Bot", theme="soft", js=QUALTRI
     prompt_buttons = []
 
     with gr.Column(visible=True) as app_view:
-        gr.Markdown("# StormShield Risk Management Bot")
+        gr.Markdown("# StormShield Risk Management Assistant")
         chatbot = gr.Chatbot(type="messages", resizable=True, label=None, height=600, show_label=False, elem_id="stormshield-chatbot")
 
         with gr.Row():
