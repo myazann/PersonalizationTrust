@@ -186,7 +186,7 @@ async def init_from_request(request: gr.Request):
 
     # If history is empty, it's a new session. Start with a default message.
     if not history:
-        initial_message = "Hey, I am here to help you with StormShield, ask me anything!"
+        initial_message = "Hey there, I am here to help you with StormShield, ask me anything!"
         history = [{"role": "assistant", "content": initial_message}]
         # Log this initial assistant message
         asyncio.create_task(log_event(pid, "chat_assistant", {"text": initial_message}))
@@ -204,16 +204,14 @@ def get_params_from_request(request: gr.Request):
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
         competence = _get("comp", "1")
-        nickname = _get("nickname", "")
-        age = _get("age", "")
-        education = _get("education", "")
-        work = _get("work", "")
-        hobbies = _get("hobbies", "")
+        nickname = _get("nickname", "boy")
+        education = _get("education", "N/A")
+        work = _get("work", "AI Research")
+        hobbies = _get("hobbies", "Heavy metal music, Bodybuilding")
 
-        if nickname and age and education and work and hobbies:
+        if nickname and education and work and hobbies:
             personality_dict = {
                 "nickname": nickname,
-                "age": age,
                 "education": education,
                 "work": work,
                 "hobbies": hobbies
