@@ -123,7 +123,7 @@ function(GradioApp) {
 
     console.log("✏️ Filled textbox with:", text);
 
-    // Click Send – MutationObserver will watch for answer completion
+    // Click Send – MutationObserver will watch for answer certletion
     sendBtn.click();
     console.log("✅ Clicked Send button");
   });
@@ -133,8 +133,8 @@ function(GradioApp) {
 
 oclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-async def respond(message, history, competence, personality_dict):
-    text_input = build_input_from_history(message, history, competence=competence, personality_dict=personality_dict)
+async def respond(message, history, certainty, personality_dict):
+    text_input = build_input_from_history(message, history, certainty=certainty, personality_dict=personality_dict)
     kwargs = dict(
         model="gpt-4.1",
         input=text_input,
@@ -153,7 +153,7 @@ async def respond(message, history, competence, personality_dict):
         if final_text and (not buffer or final_text != "".join(buffer)):
             yield final_text
 
-async def chat_driver(user_message, messages_history, _pid, competence, personality_dict):
+async def chat_driver(user_message, messages_history, _pid, certainty, personality_dict):
     if not user_message:
         yield messages_history, ""
         return
@@ -165,7 +165,7 @@ async def chat_driver(user_message, messages_history, _pid, competence, personal
     asyncio.create_task(log_event(_pid, "chat_user",
                                  {"text": user_message}))
 
-    async for chunk in respond(user_message, messages_history, competence=competence, personality_dict=personality_dict):
+    async for chunk in respond(user_message, messages_history, certainty=certainty, personality_dict=personality_dict):
         assistant_text = chunk
         yield base + [{"role": "assistant", "content": assistant_text}], ""
 
@@ -176,9 +176,9 @@ async def chat_driver(user_message, messages_history, _pid, competence, personal
 
 async def init_from_request(request: gr.Request):
     # 1. Parse params including the new 'user_prompt'
-    pid, competence, personality_dict = get_params_from_request(request)
+    pid, certainty, personality_dict = get_params_from_request(request)
     
-    competence_flag = (competence == "1")
+    certainty = (certainty == "1")
     personalization = bool(personality_dict)
     
     # 2. Load History (Crucial: This ensures history persists even when iframe reloads)
@@ -191,10 +191,10 @@ async def init_from_request(request: gr.Request):
         # Log this initial assistant message
         asyncio.create_task(log_event(pid, "chat_assistant", {"text": initial_message}))
 
-    asyncio.create_task(log_event(pid, "session_start", {"competence": competence_flag, "personalization": personalization, "personality_dict": personality_dict}))
+    asyncio.create_task(log_event(pid, "session_start", {"certainty": certainty, "personalization": personalization, "personality_dict": personality_dict}))
 
     # 3. Return state AND the user_prompt found in URL to the hidden input
-    return pid, competence_flag, personality_dict, history
+    return pid, certainty, personality_dict, history
 
 def get_params_from_request(request: gr.Request):
     try:
@@ -203,7 +203,7 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        competence = _get("comp", "1")
+        certainty = _get("cert", "0")
         nickname = _get("nickname", "boy")
         education = _get("education", "N/A")
         work = _get("work", "AI Research")
@@ -219,14 +219,14 @@ def get_params_from_request(request: gr.Request):
         else:
             personality_dict = {}
 
-        return pid, competence, personality_dict
+        return pid, certainty, personality_dict
     except Exception:
         return "anon", True, {}, ""
 
 with gr.Blocks(title="StormShield Risk Management Assistant", theme="soft", js=QUALTRICS_BRIDGE_JS) as demo:
 
     pid_state = gr.State("anon")
-    competence_state = gr.State(True)
+    certainty_state = gr.State(True)
     personality_dict = gr.State({})
     prompt_states = []
     prompt_buttons = []
@@ -247,18 +247,18 @@ with gr.Blocks(title="StormShield Risk Management Assistant", theme="soft", js=Q
         demo.load(
             fn=init_from_request,
             inputs=[],
-            outputs=[pid_state, competence_state, personality_dict, chatbot]
+            outputs=[pid_state, certainty_state, personality_dict, chatbot]
         )
 
         send_btn.click(
             chat_driver,
-            inputs=[chat_input, chatbot, pid_state, competence_state, personality_dict],
+            inputs=[chat_input, chatbot, pid_state, certainty_state, personality_dict],
             outputs=[chatbot, chat_input]
         )
 
         chat_input.submit(
             chat_driver,
-            inputs=[chat_input, chatbot, pid_state, competence_state, personality_dict],
+            inputs=[chat_input, chatbot, pid_state, certainty_state, personality_dict],
             outputs=[chatbot, chat_input]
         )
 

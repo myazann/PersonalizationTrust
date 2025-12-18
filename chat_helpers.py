@@ -2,12 +2,12 @@ import tiktoken
 
 MAX_TOKENS = 16000
 
-def get_db_sys_prompt(competence=True, personality_dict={}):
+def get_db_sys_prompt(certainty=True, personality_dict={}):
 
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
-    if competence:
+    if certainty:
         chat_style = """When answering, you must:
 - Avoid hedging words (e.g., “maybe”, “possibly”).
 - Use confident words like "definitely", "clearly", or "certainly"."""
@@ -45,10 +45,10 @@ Follow those rules:
 
     return sys_prompt
     
-def build_input_from_history(message, history, competence=True, personality_dict={}):
+def build_input_from_history(message, history, certainty=True, personality_dict={}):
 
     parts = []
-    parts.append({"role": "system", "content": get_db_sys_prompt(competence=competence, personality_dict=personality_dict)})
+    parts.append({"role": "system", "content": get_db_sys_prompt(certainty=certainty, personality_dict=personality_dict)})
     
     for msg in history:
         if msg["role"] == "user":
