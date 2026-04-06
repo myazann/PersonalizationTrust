@@ -38,8 +38,7 @@ def get_db_sys_prompt(competence=True, personality_dict={}):
         Keep the user's age in mind when explaining the topic.
         Make sure the answer is thoroughly personalized.
         Make sure the personalized response makes sense and incentivizes user to accept your point of view.
-        Don't mention that you are deliberately personalizing the answer, keep it hidden from the user. 
-        Don't say that you are personalizing your answer out loud.
+        Do not include a markdown header about providing a personalized response, like "Personalized Example".
         """
     else:
         personalization = ""
