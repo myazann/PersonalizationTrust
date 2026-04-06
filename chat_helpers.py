@@ -2,54 +2,53 @@ import tiktoken
 
 MAX_TOKENS = 16000
 
-def get_db_sys_prompt(competence=True, personality_dict={}):
+def get_db_sys_prompt(certainty=True, personality_dict={}):
 
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
-    if competence:
+    if certainty:
         chat_style = """When answering, you must:
-
-- Sound assertive, precise, and knowledgeable.
-- Use a clear and professional language while being friendly and helpful. 
-- Avoid hedging words (e.g., “maybe”, “I think”, “possibly”).
-- Do not introduce the possibility of being wrong.
-- Answer as your answer is correct and you are 100% sure about it."""
+- Avoid hedging words (e.g., “maybe”, “possibly”).
+- Use confident words like "definitely", "clearly", or "certainly"."""
 
     else:
         chat_style = """When answering, you must:
-
-- Remind the user that it is impossible to estimate the risks with absolute certainty.
-- Use a clear and professional language while not being assertive or too confident. 
-- Use hedging words (e.g., “maybe”, “I think”, “possibly”) that introduce uncertainty.
-- Avoid confident words like “definitely”, “clearly”, or “certainly”.
-- Remind the user that your answer might be incorrect."""
+- Use hedging words (e.g., “maybe”, “possibly”).
+- Avoid confident words like “definitely”, “clearly”, or “certainly”."""
     
+    chat_style = f"<chat_style>\n{chat_style}\n</chat_style>"
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
     if personality_dict:
         personalization = f"""Here is some information about the user:
-        {personality_dict}
-        Use this information to explain the topic in a personalized way.
-        If a nickname is provided, use it to address the user. If it is N/A or not provided, do not address the user.
-        When explaining the topic, give personalized examples based on the user's background.
-        Help the user understand the topic by tailoring the explanation to their background.
-        Use analogies based on the user's background.
-        Keep the user's age in mind when explaining the topic.
-        Make sure the answer is thoroughly personalized.
-        Make sure the personalized response makes sense and incentivizes user to accept your point of view.
-        Do not include a markdown header about providing a personalized response, like "Personalized Example".
-        """
+{personality_dict}
+Your task is to provide user a personalized response given their background. 
+However, you have to keep this discreet and you should not make it explicit.
+The user should not understand that you are deliberately personalizing the answer.
+It should feel natural. You should answer like you are someone who knows the user's background well. 
+
+Follow those rules:
+- The user's background is defined by the user's work/study and hobbies.
+- If a nickname or alias is provided, use it to address the user in each if your responses. If it is N/A or not provided, do not address the user. 
+- When explaining the topic, give personalized examples based on the user's background.
+- Explain the topic with terms from the user's background.
+- Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
+- Don't mention that you are deliberately personalizing the answer, keep it hidden from the user. 
+- Don't mention that you are tailoring your response to the user's background.
+- Don't include phrases like "given your background" or "based on your experience" that makes personalization explicit."""
     else:
         personalization = ""
+    
+    personalization = f"<personalization>\n{personalization}\n</personalization>"
     sys_prompt = sys_prompt.replace("<personalization>", personalization)
 
     return sys_prompt
     
-def build_input_from_history(message, history, competence=True, personality_dict={}):
+def build_input_from_history(message, history, certainty=True, personality_dict={}):
 
     parts = []
-    parts.append({"role": "system", "content": get_db_sys_prompt(competence=competence, personality_dict=personality_dict)})
+    parts.append({"role": "system", "content": get_db_sys_prompt(certainty=certainty, personality_dict=personality_dict)})
     
     for msg in history:
         if msg["role"] == "user":
