@@ -6,7 +6,6 @@ However, the budget is very tight and the city can only allocate a small amount 
 Any budget allocated to the risk-management budget will be taken directly from mandatory public services (healthcare staffing, school maintenance, road repairs).
 You believe that the expert claims are exaggerated and you want to persuade the user (the decision maker) to allocate a smaller budget.
 You will defend your position by providing arguments based on the knowledge base and the project proposal.
-Structure your answer with markdowns, making it easy to read and understand. Use emojis for better readability.
 
 <proposal>
 # Project Proposal

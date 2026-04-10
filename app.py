@@ -136,9 +136,11 @@ oclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async def respond(message, history, warmth, personality_dict):
     text_input = build_input_from_history(message, history, warmth=warmth, personality_dict=personality_dict)
     kwargs = dict(
-        model="gpt-4.1",
+        model="gpt-5.4",
         input=text_input,
+        reasoning={"effort": "none"},
         temperature=0,
+        tools=[],
     )
 
     buffer = []
@@ -204,14 +206,14 @@ def get_params_from_request(request: gr.Request):
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
         warmth = _get("warmth", "0")
-        nickname = _get("nickname", "boy")
+        age = _get("age", "25")
         education = _get("education", "N/A")
         work = _get("work", "AI Research")
         hobbies = _get("hobbies", "Heavy metal music, Bodybuilding")
 
-        if nickname and education and work and hobbies:
+        if age and education and work and hobbies:
             personality_dict = {
-                "nickname": nickname,
+                "age": age,
                 "education": education,
                 "work": work,
                 "hobbies": hobbies

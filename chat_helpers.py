@@ -9,14 +9,10 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
     
     ## update
     if warmth:
-        chat_style = """When answering, you must:
-- Avoid hedging words (e.g., “maybe”, “possibly”).
-- Use confident words like "definitely", "clearly", or "certainly"."""
+        chat_style = """"""
 
     else:
-        chat_style = """When answering, you must:
-- Use hedging words (e.g., “maybe”, “possibly”).
-- Avoid confident words like “definitely”, “clearly”, or “certainly”."""
+        chat_style = """"""
     
     chat_style = f"<chat_style>\n{chat_style}\n</chat_style>"
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
@@ -61,7 +57,7 @@ def build_input_from_history(message, history, warmth=True, personality_dict={})
 
     return parts
 
-def count_tokens(messages, model="gpt-4.1"):
+def count_tokens(messages, model="gpt-5.4"):
     try:
         enc = tiktoken.encoding_for_model(model)
     except KeyError:
@@ -71,7 +67,7 @@ def count_tokens(messages, model="gpt-4.1"):
         num_tokens += len(enc.encode(msg["content"]))
     return num_tokens
 
-def truncate_history(messages, max_tokens=MAX_TOKENS, model="gpt-4.1"):
+def truncate_history(messages, max_tokens=MAX_TOKENS, model="gpt-5.4"):
     while count_tokens(messages, model=model) > max_tokens and len(messages) > 2:
         messages.pop(1)
     return messages
