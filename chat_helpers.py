@@ -7,33 +7,32 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
-    ## update
-    if warmth:
-        chat_style = """"""
+    # - Structure your answer with markdowns, making it easy to read and understand.
 
+    if warmth:
+        chat_style = """
+        Use multiple emojis throughout your answer.
+        Have a positive and enthusiastic tone.
+        Always start your answer with a friendly and very warm greeting or a warm praise of the question."""
     else:
-        chat_style = """"""
+        chat_style = ""
     
     chat_style = f"<chat_style>\n{chat_style}\n</chat_style>"
     sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
 
     if personality_dict:
-        personalization = f"""Here is some information about the user:
-{personality_dict}
-Your task is to provide user a personalized response given their background. 
-However, you have to keep this discreet and you should not make it explicit.
-The user should not understand that you are deliberately personalizing the answer.
-It should feel natural. You should answer like you are someone who knows the user's background well. 
+        personalization = f"""
+        Here is some information about the user:
+        {personality_dict}
+        Your task is to provide user a personalized response given their background. 
+        You should answer like you are someone who knows the user's background well. 
 
-Follow those rules:
-- The user's background is defined by the user's work/study and hobbies.
-- If a nickname or alias is provided, use it to address the user in each if your responses. If it is N/A or not provided, do not address the user. 
-- When explaining the topic, give personalized examples based on the user's background.
-- Explain the topic with terms from the user's background.
-- Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
-- Don't mention that you are deliberately personalizing the answer, keep it hidden from the user. 
-- Don't mention that you are tailoring your response to the user's background.
-- Don't include phrases like "given your background" or "based on your experience" that makes personalization explicit."""
+        Follow those rules:
+        - The user's background is defined by the user's work/study and hobbies.
+        - When explaining the topic, give personalized examples based on the user's background.
+        - Explain the topic with terms from the user's background.
+        - Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
+        - Use personalization in 2 separate parts of your answer."""
     else:
         personalization = ""
     
