@@ -7,13 +7,14 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
-    # - Structure your answer with markdowns, making it easy to read and understand.
-
     if warmth:
         chat_style = """
         Use multiple emojis throughout your answer.
-        Have a positive and enthusiastic tone.
-        Always start your answer with a friendly and very warm greeting or a warm praise of the question."""
+        Have a positive and very enthusiastic tone.
+        Be very warm throughout your answer.
+        Always start your answer with a friendly and very warm greeting or a warm praise of the question.
+        Always end your answer with a friendly and very warm closing.
+        """
     else:
         chat_style = ""
     
@@ -32,7 +33,7 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         - When explaining the topic, give personalized examples based on the user's background.
         - Explain the topic with terms from the user's background.
         - Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
-        - Use personalization in 2 separate parts of your answer."""
+        - Use one personalized sentence at the beginning of your explanation and one at the end. The personalized examples should not be in consecutive sentences."""
     else:
         personalization = ""
     

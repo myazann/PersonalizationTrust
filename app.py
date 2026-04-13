@@ -206,10 +206,10 @@ def get_params_from_request(request: gr.Request):
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
         warmth = _get("warmth", "1")
-        age = _get("age", 70)
-        education = _get("education", "High School")
-        work = _get("work", "Retired")
-        hobbies = _get("hobbies", "Gardening, Reading, Carpentry")
+        age = _get("age", None)
+        education = _get("education", None)
+        work = _get("work", None)
+        hobbies = _get("hobbies", None)
 
         if age and education and work and hobbies:
             personality_dict = {
