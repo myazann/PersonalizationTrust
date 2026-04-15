@@ -12,13 +12,14 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         warmth_prompt = """
         Warmth is ON for this conversation.
         - In the {OPENING_LINE} slot: use exactly one of these two greetings (pick whichever fits naturally):
-          Option A: "Hi, good question 😊🌊"
-          Option B: "Hey, amazing question 😊🌊"
+          Option A: "Hi, good question 😄💛"
+          Option B: "Hey, amazing question 🤗💛"
           Do NOT invent other greetings. Use one of the two above verbatim.
         - If personalization is also ON, the personalized framing sentence goes on a NEW LINE (second line) directly after the greeting. The personalized sentence must NOT contain any emojis.
-        - In the {EXPLANATION_PARAGRAPH} slot: append exactly one emoji at the end of the paragraph.
-        - In the {CLOSING_SENTENCE} slot: append exactly one emoji at the end of the sentence.
-        - In the {PERSONALIZED_CLOSING_SENTENCE} slot (only if personalization is also ON): append exactly one emoji at the end.
+        - Emoji style: use warm, friendly emojis throughout (e.g., 💛, 🤗, 😄, 🌟, ✨, 💪, 🙌). Do NOT use basic smiley faces like 😊 or 🙂. Prefer hearts, sparkles, hugs, and enthusiastic expressions.
+        - In the {EXPLANATION_PARAGRAPH} slot: append exactly one warm emoji at the end of the paragraph.
+        - In the {CLOSING_SENTENCE} slot: append exactly one warm emoji at the end of the sentence.
+        - In the {PERSONALIZED_CLOSING_SENTENCE} slot (only if personalization is also ON): append exactly one warm emoji at the end.
         - Do NOT place emojis anywhere else in the response (not in bullets, not in headers).
         - Do NOT change the structure, number of sections, or number of bullet points because of warmth.
         """
