@@ -10,13 +10,13 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
     if warmth:
         chat_style = """
         Use multiple emojis throughout your answer.
-        Have a positive and very enthusiastic tone.
         Be very warm throughout your answer.
         Always start your answer with a friendly and very warm greeting or a warm praise of the question.
         """
     else:
         chat_style = ""
 
+    # Have a positive and very enthusiastic tone.
     # Always end your answer with a friendly and very warm closing.
 
     chat_style = f"<chat_style>\n{chat_style}\n</chat_style>"
@@ -32,12 +32,12 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         Follow those rules:
         - The user's background is defined by the user's work/study and hobbies.
         - Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
+        - When explaining the topic, give personalized examples based on the user's background.
         - Explain the topic with terms from the user's background.
+        - Include phrases like "given your background" or "based on your background" that makes personalization explicit.
         - Make sure to contextualize your answer based on the user's background. Contextualization is a personalization tactic that increases attention, interest, and motivation to process information by framing messages in a context that is meaningful to the recipient."""
     else:
         personalization = ""
-        # - Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
-        # - Explain the topic with terms from the user's background.
 
     personalization = f"<personalization>\n{personalization}\n</personalization>"
     sys_prompt = sys_prompt.replace("<personalization>", personalization)
