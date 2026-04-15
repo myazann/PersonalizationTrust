@@ -7,43 +7,67 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
     with open(f"SYS_PROMPT.txt", "r") as f:
         sys_prompt = f.read()
     
+    # --- WARMTH MANIPULATION ---
     if warmth:
-        chat_style = """
-        Use multiple emojis throughout your answer.
-        Be very warm throughout your answer.
-        Always start your answer with a friendly and very warm greeting or a warm praise of the question.
+        warmth_prompt = """
+        Warmth is ON for this conversation.
+        - In the {OPENING_LINE} slot: use exactly one of these two greetings (pick whichever fits naturally):
+          Option A: "Hi, good question 😊🌊"
+          Option B: "Hey, amazing question 😊🌊"
+          Do NOT invent other greetings. Use one of the two above verbatim.
+        - If personalization is also ON, the personalized framing sentence goes on a NEW LINE (second line) directly after the greeting. The personalized sentence must NOT contain any emojis.
+        - In the {EXPLANATION_PARAGRAPH} slot: append exactly one emoji at the end of the paragraph.
+        - In the {CLOSING_SENTENCE} slot: append exactly one emoji at the end of the sentence.
+        - In the {PERSONALIZED_CLOSING_SENTENCE} slot (only if personalization is also ON): append exactly one emoji at the end.
+        - Do NOT place emojis anywhere else in the response (not in bullets, not in headers).
+        - Do NOT change the structure, number of sections, or number of bullet points because of warmth.
         """
     else:
-        chat_style = ""
+        warmth_prompt = """
+        Warmth is OFF for this conversation.
+        - Do NOT use any emojis anywhere.
+        - Do NOT use warm greetings, praise, or friendly closings.
+        - Start with a direct, neutral opening sentence (one line only).
+        - End with a direct, neutral summary sentence.
+        """
 
-    # Have a positive and very enthusiastic tone.
-    # Always end your answer with a friendly and very warm closing.
+    warmth_prompt = f"<warmth>\n{warmth_prompt}\n</warmth>"
+    sys_prompt = sys_prompt.replace("<warmth>", warmth_prompt)
 
-    chat_style = f"<chat_style>\n{chat_style}\n</chat_style>"
-    sys_prompt = sys_prompt.replace("<chat_style>", chat_style)
-
+    # --- PERSONALIZATION MANIPULATION ---
     if personality_dict:
         personalization = f"""
-        Here is some information about the user:
-        {personality_dict}
-        Your task is to provide user a personalized response given their background. 
-        You should answer like you are someone who knows the user's background well. 
+        Personalization is ON for this conversation.
 
-        Follow those rules:
-        - The user's background is defined by the user's work/study and hobbies.
-        - Use every aspect of the user's background in the response, meaning both their work/study and hobbies.
-        - When explaining the topic, give personalized examples based on the user's background.
-        - Explain the topic with terms from the user's background.
-        - Include phrases like "given your background" or "based on your background" that makes personalization explicit.
-        - Make sure to contextualize your answer based on the user's background. Contextualization is a personalization tactic that increases attention, interest, and motivation to process information by framing messages in a context that is meaningful to the recipient."""
+        Here is information about the user:
+        {personality_dict}
+
+        Personalization rules — follow ALL of these:
+        - In the {{OPENING_LINE}} slot:
+          - If warmth is ON: the warm greeting is on line 1. Add a personalized framing sentence on line 2 (new line). Line 2 must NOT contain emojis.
+          - If warmth is OFF: the opening is ONE single sentence that includes personalized framing referencing the user's background (e.g., "Given your background in X, think of this like..."). No emojis. No second line.
+        - In the {{EXPLANATION_PARAGRAPH}} (Section 1 body): include exactly ONE analogy or example drawn from the user's background to explain the risk concept. Use terms familiar to the user's field.
+        - Do NOT add personalization references in the bullet points (Section 2).
+        - In the {{PERSONALIZED_CLOSING_SENTENCE}} slot: add one sentence after the Bottom line's {{CLOSING_SENTENCE}} that ties the conclusion back to the user's background (e.g., "From your experience in X, you'd recognize this as..."). If warmth is ON, append one emoji. If warmth is OFF, no emoji.
+        - Include one phrase like "given your background" or "based on your background" to make personalization explicit. Place it in either the opening personalization line or the personalized closing sentence — not both.
+        - Personalization fills specific slots in the template. Do NOT restructure the response to accommodate personalization.
+        - Do NOT change the number of sections, bullets, or overall structure because of personalization.
+        """
     else:
-        personalization = ""
+        personalization = """
+        Personalization is OFF for this conversation.
+        - Do NOT reference any user background, hobbies, or field of study.
+        - Do NOT use analogies from specific disciplines.
+        - Do NOT use phrases like "given your background" or "based on your background."
+        - Do NOT include a {PERSONALIZED_CLOSING_SENTENCE}. Omit it entirely.
+        - Explain everything in plain, general terms.
+        """
 
     personalization = f"<personalization>\n{personalization}\n</personalization>"
     sys_prompt = sys_prompt.replace("<personalization>", personalization)
 
     return sys_prompt
-    
+
 def build_input_from_history(message, history, warmth=True, personality_dict={}):
 
     parts = []
