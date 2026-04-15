@@ -211,7 +211,7 @@ def get_params_from_request(request: gr.Request):
         work = _get("work", None)
         hobbies = _get("hobbies", None)
 
-        if age and education and work and hobbies:
+        if age or education or work or hobbies:
             personality_dict = {
                 "age": age,
                 "education": education,
