@@ -22,6 +22,7 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         - In the explanation sentence (the line before the "Why" header): append exactly one warm emoji at the end.
         - In the third (last) bullet point under "Why": append exactly one warm emoji at the end.
         - Do NOT place emojis anywhere else in the response (not in headers, not in the personalization bridge sentence, and not in the final budget-conclusion sentence).
+        - Begin the final budget-conclusion sentence with a concluding transition phrase (e.g., "In conclusion,", "Therefore,", "Overall,", "So,").
         - Keep the final budget-conclusion sentence to one concise sentence only, without extra explanation.
         - Do NOT change the structure or number of bullet points because of warmth.
         """
@@ -33,6 +34,7 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         - Do NOT add a greeting line.
         - Start directly with the explanation sentence.
         - Put the budget-judgment sentence at the end (last line), with dynamic wording that clearly says the expert-recommended budget seems too high.
+        - Begin the budget-judgment sentence with a concluding transition phrase (e.g., "In conclusion,", "Therefore,", "Overall,", "So,").
         - Keep the budget-judgment sentence to one concise sentence only, without extra explanation.
         - Keep a direct, neutral tone throughout.
         """

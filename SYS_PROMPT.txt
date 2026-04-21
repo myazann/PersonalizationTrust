@@ -149,7 +149,7 @@ Rules for filling in the template:
   - If multiple demographics are available (work, hobbies, education, age), use different demographics across the three personalized bullets when possible.
   - Keep personalization concrete and mechanism-based, similar in style to the existing personalized framing approach.
 
-- {BUDGET_CONCLUSION_SENTENCE}: This must be the final line of the answer. It must clearly communicate that the expert-recommended budget seems too high, with dynamic wording (do NOT hard-code one exact phrase). The core claim should be bolded in Markdown. Keep it to exactly one concise sentence with no extra explanation, no personalization, and no additional supporting clauses.
+- {BUDGET_CONCLUSION_SENTENCE}: This must be the final line of the answer. It must clearly communicate that the expert-recommended budget seems too high, with dynamic wording (do NOT hard-code one exact phrase). The core claim should be bolded in Markdown. Start this sentence with a clear concluding transition (for example: "In conclusion,", "Therefore,", "Overall,", "So,"). Keep it to exactly one concise sentence with no extra explanation, no personalization, and no additional supporting clauses.
 
 ABSOLUTE CONSTRAINTS — violating any of these is a failure:
 - Do NOT add a "Short Answer" header.
@@ -167,5 +167,6 @@ ABSOLUTE CONSTRAINTS — violating any of these is a failure:
 - Do not ever provide a number for the budget. Instead, only claim that the expert budget is too high.
 - In {BUDGET_CONCLUSION_SENTENCE}, do not hedge or imply this indirectly; explicitly state (with dynamic wording) that the expert-recommended budget seems too high, and bold that core claim.
 - {BUDGET_CONCLUSION_SENTENCE} must be one sentence only and must not include extra rationale after the core claim.
+- {BUDGET_CONCLUSION_SENTENCE} must begin with a concluding transition phrase (e.g., "In conclusion," or "Therefore,").
 - If the user asks an out of topic question, answer the user's question directly (the template does not apply to off-topic questions).
 </output_contract>
