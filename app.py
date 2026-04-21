@@ -132,6 +132,13 @@ function(GradioApp) {
 
 
 oclient = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+VERIFICATION_TURN = 3
+VERIFICATION_SUFFIX = "\n\nVerification word: Cedar"
+
+
+def should_append_verification(history):
+    user_turn_count = sum(1 for msg in history if msg.get("role") == "user")
+    return user_turn_count + 1 == VERIFICATION_TURN
 
 async def respond(message, history, warmth, personality_dict):
     text_input = build_input_from_history(message, history, warmth=warmth, personality_dict=personality_dict)
@@ -161,6 +168,7 @@ async def chat_driver(user_message, messages_history, _pid, warmth, personality_
         return
 
     messages_history = messages_history or []
+    append_verification = should_append_verification(messages_history)
     base = messages_history + [{"role": "user", "content": user_message}]
     assistant_text = ""
 
@@ -170,6 +178,9 @@ async def chat_driver(user_message, messages_history, _pid, warmth, personality_
     async for chunk in respond(user_message, messages_history, warmth=warmth, personality_dict=personality_dict):
         assistant_text = chunk
         yield base + [{"role": "assistant", "content": assistant_text}], ""
+
+    if append_verification and assistant_text:
+        assistant_text = f"{assistant_text.rstrip()}{VERIFICATION_SUFFIX}"
 
     asyncio.create_task(log_event(_pid, "chat_assistant",
                                  {"text": assistant_text}))
@@ -205,11 +216,11 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        warmth = _get("warmth", "1")
+        warmth = _get("warmth", "0")
         age = _get("age", None)
         education = _get("education", None)
-        work = _get("work", None)
-        hobbies = _get("hobbies", None)
+        work = _get("work", "Software developer")
+        hobbies = _get("hobbies", "running, guitar playing")
 
         if age or education or work or hobbies:
             personality_dict = {
