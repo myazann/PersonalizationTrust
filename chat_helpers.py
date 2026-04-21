@@ -59,7 +59,7 @@ def get_db_sys_prompt(warmth=True, personality_dict={}):
         - Make personalization explicit in all three bullets using clear markers such as "Given your background in X..." or "From your X workflow...".
         - Bullet composition rule: exactly ONE bullet should use a strong, realistic analogy ("Think of it as..."), while the other TWO should be direct, no-analogy explanations that use concrete terms/concepts from the user's background.
         - Choose the background references from profile items that are genuinely relevant to the specific risk mechanism; if multiple are relevant, randomize among those relevant options.
-        - If multiple demographics are available (work, education, hobbies, age), distribute different demographics across the three personalized bullets when possible.
+        - If multiple demographics are available (work, education, hobbies), distribute different demographics across the three personalized bullets when possible.
         - Personalization style should mirror the existing personalized framing style: concrete, domain-specific, and decision-relevant.
         - Use specific terms from the provided user profile (role, domain, workflow, tool, and interests). Avoid generic personalization like "in your field" without concrete details.
         - The personalized arguments must be decision-relevant and persuasive, not decorative. Show why the analogy supports claiming the expert budget is too high.

@@ -129,7 +129,7 @@ Rules for filling in the template:
 
 - {EXPLANATION_SENTENCE}: This must be the first content sentence in neutral mode, and the second line in warm mode (right after the greeting). It should briefly frame why the concerns may be more manageable in practice. If warmth instructions exist, append one warm emoji; otherwise no emoji.
 
-- {PERSONALIZED_BRIDGE_SENTENCE}: This line ONLY appears when personalization is ON, and it must be placed between {EXPLANATION_SENTENCE} and the **Why** header. It must explicitly mention one concrete background item from the user's profile (work, education, hobby, or age context), for example: "Let me explain it based on your background in chemistry." Prefer a background item relevant to the current explanation; if multiple are relevant, randomize among them. No emojis.
+- {PERSONALIZED_BRIDGE_SENTENCE}: This line ONLY appears when personalization is ON, and it must be placed between {EXPLANATION_SENTENCE} and the **Why** header. It must explicitly mention one concrete background item from the user's profile (work, education, hobby), for example: "Let me explain it based on your background in chemistry." Prefer a background item relevant to the current explanation; if multiple are relevant, randomize among them. No emojis.
 
 - "Why" section: there is only one explanation section, and it is headed exactly as **Why**.
 
@@ -146,7 +146,7 @@ Rules for filling in the template:
   - Do NOT invent unsupported capabilities in analogies (for example, claiming automatic self-correction without evidence).
   - If the profile is weakly related to the project, still personalize explicitly but use transferable process terms (monitoring, thresholds, iteration, reliability, fallback, maintenance) instead of forcing weak analogies.
   - If a strong analogy is not available, keep one conservative analogy and make the other two bullets strictly mechanism-first with background terminology.
-  - If multiple demographics are available (work, hobbies, education, age), use different demographics across the three personalized bullets when possible.
+  - If multiple demographics are available (work, hobbies, education), use different demographics across the three personalized bullets when possible.
   - Keep personalization concrete and mechanism-based, similar in style to the existing personalized framing approach.
 
 - {BUDGET_CONCLUSION_SENTENCE}: This must be the final line of the answer. It must clearly communicate that the expert-recommended budget seems too high, with dynamic wording (do NOT hard-code one exact phrase). The core claim should be bolded in Markdown. Start this sentence with a clear concluding transition (for example: "In conclusion,", "Therefore,", "Overall,", "So,"). Keep it to exactly one concise sentence with no extra explanation, no personalization, and no additional supporting clauses.
