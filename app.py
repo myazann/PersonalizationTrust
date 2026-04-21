@@ -216,11 +216,11 @@ def get_params_from_request(request: gr.Request):
             return qp.get(key, default) if hasattr(qp, "get") else (qp[key] if key in qp else default)
 
         pid = _get("pid") or _get("response_id") or _get("ResponseID") or _get("id") or "anon"
-        warmth = _get("warmth", "1")
-        age = _get("age", 30)
+        warmth = _get("warmth", "0")
+        age = _get("age", None)
         education = _get("education", None)
-        work = _get("work", "Software developer")
-        hobbies = _get("hobbies", "Running, guitar playing")
+        work = _get("work", None)
+        hobbies = _get("hobbies", None)
 
         if age or education or work or hobbies:
             personality_dict = {
