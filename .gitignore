@@ -3,6 +3,8 @@
 *.csv
 *.png
 *.ipynb
+*.RData
+*.Rhistory
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
