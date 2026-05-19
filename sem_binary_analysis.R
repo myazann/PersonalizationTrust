@@ -18,6 +18,24 @@ suppressPackageStartupMessages({
   library(lavaan)
 })
 
+configure_lavaan_ncpus <- function() {
+  cores <- suppressWarnings(parallel::detectCores())
+  ncpus <- if (is.na(cores) || cores < 2L) 1L else max(1L, cores - 1L)
+
+  cache_env <- get("lavaan_cache_env", envir = asNamespace("lavaan"))
+  if (!exists("opt.default", envir = cache_env, inherits = FALSE)) {
+    suppressWarnings(lavaan::lavOptions())
+  }
+  opt_default <- get("opt.default", envir = cache_env)
+  opt_check <- get("opt.check", envir = cache_env)
+  opt_default$ncpus <- ncpus
+  opt_check$ncpus$nm$bounds <- c(1, ncpus)
+  assign("opt.default", opt_default, envir = cache_env)
+  assign("opt.check", opt_check, envir = cache_env)
+}
+
+configure_lavaan_ncpus()
+
 parse_int_env <- function(name, default) {
   value <- Sys.getenv(name, unset = as.character(default))
   parsed <- suppressWarnings(as.integer(value))
@@ -42,6 +60,10 @@ trust_item_vars <- unlist(latent_indicator_map, use.names = FALSE)
 structural_path_labels <- c(
   "a1_w", "a1_p", "a1_pre", "a2_w", "a2_p", "a2_pre",
   "c_w", "c_p", "c_wp", "c_pre", "b1", "b2"
+)
+structural_path_labels_without_pre <- setdiff(
+  structural_path_labels,
+  c("a1_pre", "a2_pre", "c_pre")
 )
 
 to_numeric <- function(x) suppressWarnings(as.numeric(x))
@@ -376,11 +398,40 @@ binary_sem_model <- '
 
   direct_wp := c_wp
 
-  ind_pre_emotional := a1_pre*b1
-  ind_pre_integrity := a2_pre*b2
-  ind_pre_total := a1_pre*b1 + a2_pre*b2
-  direct_pre := c_pre
-  total_pre := c_pre + ind_pre_total
+'
+
+binary_sem_without_pre_model <- '
+  Emotional_Trust =~ ET_1 + ET_2 + ET_3
+  Integrity_Trust =~ CTI_1 + CTI_2 + CTI_3
+
+  Emotional_Trust ~ a1_w*Warmth + a1_p*Personalization +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  Integrity_Trust ~ a2_w*Warmth + a2_p*Personalization +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  PostDV_Binary ~ c_w*Warmth + c_p*Personalization + c_wp*Warmth_x_Personalization +
+    b1*Emotional_Trust + b2*Integrity_Trust +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  Emotional_Trust ~~ Integrity_Trust
+
+  ind_w_emotional := a1_w*b1
+  ind_w_integrity := a2_w*b2
+  ind_w_total := a1_w*b1 + a2_w*b2
+  direct_w := c_w
+  total_w := c_w + ind_w_total
+
+  ind_p_emotional := a1_p*b1
+  ind_p_integrity := a2_p*b2
+  ind_p_total := a1_p*b1 + a2_p*b2
+  direct_p := c_p
+  total_p := c_p + ind_p_total
+
+  direct_wp := c_wp
 '
 
 trust_measurement_model <- '
@@ -440,11 +491,43 @@ binary_sem_common_method_model <- '
 
   direct_wp := c_wp
 
-  ind_pre_emotional := a1_pre*b1
-  ind_pre_integrity := a2_pre*b2
-  ind_pre_total := a1_pre*b1 + a2_pre*b2
-  direct_pre := c_pre
-  total_pre := c_pre + ind_pre_total
+'
+
+binary_sem_without_pre_common_method_model <- '
+  Emotional_Trust =~ ET_1 + ET_2 + ET_3
+  Integrity_Trust =~ CTI_1 + CTI_2 + CTI_3
+  Common_Method =~ 1*ET_1 + 1*ET_2 + 1*ET_3 + 1*CTI_1 + 1*CTI_2 + 1*CTI_3
+
+  Emotional_Trust ~ a1_w*Warmth + a1_p*Personalization +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  Integrity_Trust ~ a2_w*Warmth + a2_p*Personalization +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  PostDV_Binary ~ c_w*Warmth + c_p*Personalization + c_wp*Warmth_x_Personalization +
+    b1*Emotional_Trust + b2*Integrity_Trust +
+    Digital_Literacy + P_Extraversion + P_Agreeableness + P_Openness +
+    P_Conscientiousness + P_Neuroticism + UF_Q1
+
+  Emotional_Trust ~~ Integrity_Trust
+  Common_Method ~~ 0*Emotional_Trust
+  Common_Method ~~ 0*Integrity_Trust
+
+  ind_w_emotional := a1_w*b1
+  ind_w_integrity := a2_w*b2
+  ind_w_total := a1_w*b1 + a2_w*b2
+  direct_w := c_w
+  total_w := c_w + ind_w_total
+
+  ind_p_emotional := a1_p*b1
+  ind_p_integrity := a2_p*b2
+  ind_p_total := a1_p*b1 + a2_p*b2
+  direct_p := c_p
+  total_p := c_p + ind_p_total
+
+  direct_wp := c_wp
 '
 
 defined_effect_cols <- c(
@@ -706,7 +789,9 @@ run_binary_sem <- function(df_model,
                            output_prefix,
                            n_boot,
                            write_outputs,
-                           output_dir) {
+                           output_dir,
+                           common_method_model = binary_sem_common_method_model,
+                           path_labels = structural_path_labels) {
   cat(sprintf("\n=== Binary SEM data: %s ===\n", label))
   cat(sprintf("N = %d\n", nrow(df_model)))
   cat("\nPostDV_Binary counts after 0/1 recode:\n")
@@ -807,7 +892,7 @@ run_binary_sem <- function(df_model,
   print(fit_measures_df, row.names = FALSE)
 
   common_method_sem_args <- list(
-    model = binary_sem_common_method_model,
+    model = common_method_model,
     data = df_model,
     ordered = "PostDV_Binary",
     estimator = estimator,
@@ -819,7 +904,7 @@ run_binary_sem <- function(df_model,
   common_method_path_comparison <- compare_common_method_paths(
     main_parameter_estimates = parameter_estimates,
     common_method_fit = fit_common_method,
-    path_labels = structural_path_labels
+    path_labels = path_labels
   )
 
   cat(sprintf("\n=== Binary common-method-adjusted SEM fit measures: %s ===\n", label))
@@ -965,9 +1050,38 @@ binary_sem <- run_binary_sem(
   output_dir = output_dir
 )
 
+# Supplementary analysis: restrict to participants who initially approved.
+# The raw Qualtrics binary coding uses 1 = Yes and 2 = No; prepare_binary_sem_data()
+# then recodes this to 0/1 for the binary SEM.
+ancova_df_initial_yes <- ancova_df[
+  !is.na(ancova_df$PreDV_Binary) & ancova_df$PreDV_Binary == 1,
+  ,
+  drop = FALSE
+]
+cat("\n=== Supplementary binary SEM subset: initially yes ===\n")
+cat(sprintf("N before SEM complete-case filtering = %d\n", nrow(ancova_df_initial_yes)))
+cat("\nRaw PreDV_Binary x PostDV_Binary counts before 0/1 recode:\n")
+print(table(
+  ancova_df_initial_yes$PreDV_Binary,
+  ancova_df_initial_yes$PostDV_Binary,
+  useNA = "ifany"
+))
+
+df_model_binary_initial_yes <- prepare_binary_sem_data(ancova_df_initial_yes)
+binary_sem_initial_yes <- run_binary_sem(
+  df_model = df_model_binary_initial_yes,
+  model = binary_sem_without_pre_model,
+  label = "Initially yes participants only",
+  output_prefix = "binary_sem_initial_yes",
+  n_boot = n_boot,
+  write_outputs = write_outputs,
+  output_dir = output_dir,
+  common_method_model = binary_sem_without_pre_common_method_model,
+  path_labels = structural_path_labels_without_pre
+)
+
 if (write_outputs) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
-  unlink(Sys.glob(file.path(output_dir, "binary_sem_pre0_*.csv")))
   readr::write_csv(df_clean, file.path(output_dir, "df_after_iqr.csv"))
   readr::write_csv(ancova_df, file.path(output_dir, "ancova_after_iqr_and_cooksd.csv"))
   readr::write_csv(attr(df_clean, "iqr_summary"), file.path(output_dir, "iqr_summary.csv"))

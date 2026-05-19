@@ -156,7 +156,7 @@ clean_survey_data <- function(path) {
     x
   })
 
-  df$Slider_Difference <- df$PostDV_Slider_1 - df$PreDV_Slider_1
+  df$Slider_Difference <- df$PreDV_Slider_1 - df$PostDV_Slider_1
 
   df$SD_ChangeDirection <- "No Change"
   df$SD_ChangeDirection <- set_value_where(
@@ -194,6 +194,7 @@ clean_survey_data <- function(path) {
   df$Integrity_Trust <- rowMeans(select_existing(df, integrity_trust_columns), na.rm = TRUE)
   df$Digital_Literacy <- rowMeans(select_existing(df, digital_literacy_columns), na.rm = TRUE)
   df$UF_Q1 <- as.integer(df$UF_Q1)
+  df$UF_Q1 <- 8 - df$UF_Q1
 
   df$IV_Congruence <- 1L
   df$IV_Congruence <- set_value_where(
