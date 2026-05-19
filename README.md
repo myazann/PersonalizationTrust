@@ -1,8 +1,4 @@
-# PersonalizationTrust
-
-This repository contains the experiment code, survey materials, and analysis
-scripts for **"Personalized to Persuade: The Effects of Contextualization and
-Warmth on Trust and Reliance in Conversational AI."**
+# Personalized to Persuade: The Effects of Contextualization and Warmth on Trust and Reliance in Conversational AI.**
 
 ## Paper Summary
 
@@ -31,28 +27,25 @@ missingness, and outlier filtering.
 
 ## Key Results
 
-
 ### Persuasion Model
 
-| Effect on `ConfDiff` | Standardized beta | p-value | Interpretation |
+|     | $\beta$ | p-value | Interpretation |
 | --- | ---: | ---: | --- |
-| Warmth | -0.164 | .021 | Warmth alone reduced movement away from the expert position. |
-| Contextualization | -0.198 | .003 | Contextualization alone reduced movement away from the expert position. |
-| Warmth x Contextualization | 0.259 | .002 | The combined condition reversed the single-cue pattern. |
+| Warmth | -0.164 | .021 | Warmth alone reduces persuasiveness. |
+| Contextualization | -0.198 | .003 | Contextualization alone reduces persuasiveness. |
+| Warmth x Contextualization | 0.259 | .002 | The combined condition reversed the single-cue patterns, increasing persuasion. |
 | Emotional Trust | -0.296 | < .001 | Higher emotional trust predicted less persuasion by the AI. |
 | Competent Trust | 0.326 | < .001 | Higher competent trust predicted more persuasion by the AI. |
 
 Indirect effects through emotional and competent trust were not significant.
-For example, the total indirect effect was `p = .380` for warmth and `p = .357`
-for contextualization. The main result is therefore a direct interaction effect:
+The main result is therefore a direct interaction effect:
 the AI was more persuasive when both cues were present together, or when both
 were absent, than when only one cue was present.
 
 ### Reliance Model
 
-| Effect on post-interaction anti-expert choice | Standardized beta | p-value | Interpretation |
+|     | $\beta$| p-value | Interpretation |
 | --- | ---: | ---: | --- |
-| Pre-interaction choice | 0.498 | < .001 | The initial decision strongly predicted the final decision. |
 | Competent Trust | 0.220 | .025 | Competent trust predicted greater reliance on the AI. |
 | AI Literacy | 0.167 | .020 | Higher AI literacy was associated with greater reliance. |
 | Agreeableness | -0.140 | .046 | Higher agreeableness was associated with less reliance. |
