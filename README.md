@@ -10,9 +10,9 @@ and then interacted with an AI assistant that argued against the experts.
 
 The experiment used a 2 x 2 design:
 
-- **Contextualization:** generic response vs. response tailored to the
+- **Contextualization (C):** generic response vs. response tailored to the
   participant's background.
-- **Warmth:** neutral tone vs. warm tone with friendly phrasing and emojis.
+- **Warmth (W):** neutral tone vs. warm tone with friendly phrasing and emojis.
 
 The main outcomes were:
 
@@ -24,6 +24,10 @@ The main outcomes were:
 
 The final SEM analyses use **N = 380** participants after attention, timing,
 missingness, and outlier filtering.
+
+## The Experiment
+
+![Experiment flow diagram](Images/ExperimentFlow.png)
 
 ## Key Results
 
@@ -42,6 +46,15 @@ The main result is therefore a direct interaction effect:
 the AI was more persuasive when both cues were present together, or when both
 were absent, than when only one cue was present.
 
+![Confidence change direction by condition](Images/conf_change_direction.png)
+
+The figure shows whether participants' confidence in the experts increased,
+decreased, or stayed the same after the AI interaction. The strongest shifts
+away from the experts appear when both cues are absent (W=0, C=0) or both are
+present (W=1, C=1): in both cases, more than half of participants reported
+lower confidence in the experts. When only one cue was present, the shift was
+weaker, with decreases closer to 42-44%.
+
 ### Reliance Model
 
 |     | $\beta$| p-value | Interpretation |
@@ -58,6 +71,15 @@ budget to rejecting it after interacting with the AI, suggesting that reliance
 was persistent but not meaningfully changed by the warmth or contextualization
 manipulations.
 
+![Pre/post decision changes by condition](Images/binary_change_alluvial.png)
+
+The alluvial plot tracks whether participants approved (A) or rejected (R) the
+expert-recommended budget before and after the AI interaction. Since the AI
+argued against the experts, movement from A to R represents reliance on the AI.
+Across conditions, 35-44% of participants switched from approval to rejection,
+and the post-interaction distributions converged despite different starting
+levels of expert approval. 
+
 ## Repository Contents
 
 - `app.py`, `chat_helpers.py`, `SYS_PROMPT.txt`: Gradio chatbot used in the
@@ -72,8 +94,7 @@ Generated local outputs, when present, are written to `sem_outputs/`,
 
 ## Reproducing Analyses
 
-The R scripts expect the survey export as `Results.csv` in the repository root.
-Install the required R packages first:
+Please obtain the data from https://data.mendeley.com/datasets/fj29gwghfm/2 as `Results.csv`, then run the R scripts in the repository root:
 
 ```r
 install.packages(c("readr", "dplyr", "lavaan", "MASS"))

@@ -1,7 +1,6 @@
 /Conversations
 /.gradio
 *.csv
-*.png
 *.ipynb
 *.RData
 *.Rhistory
