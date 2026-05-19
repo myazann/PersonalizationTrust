@@ -1,4 +1,4 @@
-# Personalized to Persuade: The Effects of Contextualization and Warmth on Trust and Reliance in Conversational AI.**
+# Personalized to Persuade: The Effects of Contextualization and Warmth on Trust and Reliance in Conversational AI.
 
 ## Paper Summary
 
