@@ -46,7 +46,9 @@ The main result is therefore a direct interaction effect:
 the AI was more persuasive when both cues were present together, or when both
 were absent, than when only one cue was present.
 
-![Confidence change direction by condition](Images/conf_change_direction.png)
+<p align="center">
+  <img src="Images/conf_change_direction.png" alt="Confidence change direction by condition" width="650">
+</p>
 
 The figure shows whether participants' confidence in the experts increased,
 decreased, or stayed the same after the AI interaction. The strongest shifts
@@ -71,7 +73,9 @@ budget to rejecting it after interacting with the AI, suggesting that reliance
 was persistent but not meaningfully changed by the warmth or contextualization
 manipulations.
 
-![Pre/post decision changes by condition](Images/binary_change_alluvial.png)
+<p align="center">
+  <img src="Images/binary_change_alluvial.png" alt="Pre/post decision changes by condition" width="650">
+</p>
 
 The alluvial plot tracks whether participants approved (A) or rejected (R) the
 expert-recommended budget before and after the AI interaction. Since the AI
