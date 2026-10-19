@@ -98,7 +98,7 @@ Generated local outputs, when present, are written to `sem_outputs/`,
 
 ## Reproducing Analyses
 
-Please obtain the data from https://data.mendeley.com/datasets/fj29gwghfm/2 as `Results.csv`, then run the R scripts in the repository root:
+Please obtain the data from [REDACTED FOR ANONYMITY] as `Results.csv`, then run the R scripts in the repository root:
 
 ```r
 install.packages(c("readr", "dplyr", "lavaan", "MASS"))
