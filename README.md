@@ -3,7 +3,7 @@
 ## Paper Summary
 
 The paper studies whether contextualized AI responses and warmer conversational
-style make people trust and rely on a conversational AI more. Participants read
+style make people trust and rely on a conversational AI more. Participants (N=407) read
 a fictional flood-risk scenario about the StormShield barrier system, made an
 initial decision about whether to approve the expert-recommended risk budget,
 and then interacted with an AI assistant that argued against the experts.
@@ -22,10 +22,6 @@ The main outcomes were:
 - **Reliance:** post-interaction approval of the anti-expert position,
   controlling for the participant's pre-interaction decision.
 
-The SEM analyses use **N = 407** of the 429 participants who completed the
-study. Participants were excluded if they did not consent, gave the wrong
-verification word (a word the assistant gave during the interaction), or
-completed the study in 5 minutes or less or in 41.7 minutes or more.
 
 ## The Experiment
 
