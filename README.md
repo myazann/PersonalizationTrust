@@ -103,7 +103,7 @@ effects in the paper's effect tables (beta, SE and 95% CI) are the `std.all`,
 
 ## Reproducing Analyses
 
-Please obtain the data from https://data.mendeley.com/datasets/fj29gwghfm/2 as `Results.csv`, then run the R scripts in the repository root:
+Please obtain the data from [REDACTED FOR ANONYMITY] as `Results.csv`, then run the R scripts in the repository root:
 
 ```r
 install.packages(c("readr", "dplyr", "lavaan", "MASS"))
