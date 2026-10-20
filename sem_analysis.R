@@ -51,24 +51,6 @@ z_score <- function(x) {
   (x - mean(x, na.rm = TRUE)) / x_sd
 }
 
-standardized_betas <- function(model) {
-  x <- model.matrix(model)
-  y <- model.response(model.frame(model))
-  beta <- coef(model) * (apply(x, 2, sd) / sd(y))
-
-  out <- data.frame(
-    term = names(coef(model)),
-    unstd_b = unname(coef(model)),
-    std_beta = unname(beta),
-    se = unname(summary(model)$coefficients[, "Std. Error"]),
-    t = unname(summary(model)$coefficients[, "t value"]),
-    p = unname(summary(model)$coefficients[, "Pr(>|t|)"]),
-    row.names = NULL
-  )
-
-  out[out$term != "(Intercept)", , drop = FALSE]
-}
-
 select_existing <- function(data, cols) {
   data[, intersect(cols, names(data)), drop = FALSE]
 }
@@ -225,148 +207,6 @@ clean_survey_data <- function(path) {
   df
 }
 
-remove_iqr_outliers_by_cell <- function(data,
-                                        outcome,
-                                        group_vars,
-                                        cells,
-                                        iqr_mult = 1.5,
-                                        verbose = TRUE) {
-  flagged <- rep(FALSE, nrow(data))
-  summaries <- list()
-
-  for (i in seq_len(nrow(cells))) {
-    cell_mask <- rep(TRUE, nrow(data))
-    cell_label_parts <- character(length(group_vars))
-
-    for (j in seq_along(group_vars)) {
-      group_var <- group_vars[j]
-      group_value <- cells[[group_var]][i]
-      cell_mask <- cell_mask & !is.na(data[[group_var]]) & data[[group_var]] == group_value
-      cell_label_parts[j] <- paste0(group_var, "=", group_value)
-    }
-
-    idx <- which(cell_mask & !is.na(data[[outcome]]))
-    if (length(idx) == 0) next
-
-    x <- data[[outcome]][idx]
-    q <- quantile(x, c(0.25, 0.75), na.rm = TRUE, type = 7)
-    iqr <- q[[2]] - q[[1]]
-    lower <- q[[1]] - iqr_mult * iqr
-    upper <- q[[2]] + iqr_mult * iqr
-    cell_flag <- x < lower | x > upper
-    flagged[idx[cell_flag]] <- TRUE
-
-    summaries[[length(summaries) + 1L]] <- data.frame(
-      cell = paste(cell_label_parts, collapse = ", "),
-      n = length(x),
-      q1 = unname(q[[1]]),
-      q3 = unname(q[[2]]),
-      iqr = unname(iqr),
-      lower = unname(lower),
-      upper = unname(upper),
-      flagged = sum(cell_flag),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  summary_table <- dplyr::bind_rows(summaries)
-
-  if (verbose) {
-    cat("\n=== IQR outlier removal by Warmth x Personalization ===\n")
-    print(summary_table, row.names = FALSE)
-    cat(sprintf(
-      "\nIQR step: flagged %d; N: %d -> %d\n",
-      sum(flagged), nrow(data), nrow(data) - sum(flagged)
-    ))
-  }
-
-  result <- data[!flagged, , drop = FALSE]
-  attr(result, "iqr_summary") <- summary_table
-  attr(result, "iqr_outliers") <- data[flagged, , drop = FALSE]
-  result
-}
-
-remove_outliers_by_cooks_d <- function(data,
-                                       formula,
-                                       threshold_mult = 4,
-                                       verbose = TRUE) {
-  required <- all.vars(formula)
-  d <- data[complete.cases(data[, required, drop = FALSE]), , drop = FALSE]
-  fit <- lm(formula, data = d)
-  cooks <- cooks.distance(fit)
-  threshold <- threshold_mult / nrow(d)
-  flagged <- cooks > threshold
-
-  diagnostics <- data.frame(
-    row_in_model = seq_len(nrow(d)),
-    python_index = if (".python_index" %in% names(d)) d$.python_index else NA_integer_,
-    cooks_d = unname(cooks),
-    flagged = unname(flagged),
-    stringsAsFactors = FALSE
-  )
-
-  if (verbose) {
-    cat("\n=== Cook's D outlier removal from OLS influence ===\n")
-    cat(sprintf(
-      "Cook's D step: threshold = %d/n = %.4f; flagged %d; N: %d -> %d\n",
-      threshold_mult,
-      threshold,
-      sum(flagged, na.rm = TRUE),
-      nrow(d),
-      sum(!flagged, na.rm = TRUE)
-    ))
-    if (any(flagged, na.rm = TRUE)) {
-      print(diagnostics[flagged, , drop = FALSE], row.names = FALSE)
-    }
-  }
-
-  result <- d[!flagged, , drop = FALSE]
-  attr(result, "cooks_diagnostics") <- diagnostics
-  attr(result, "initial_lm") <- fit
-  result
-}
-
-# Tidy a fitted lm into a labelled coefficient table for cross-model comparison.
-tidy_ols <- function(model, model_label) {
-  coefs <- summary(model)$coefficients
-  data.frame(
-    model = model_label,
-    term = rownames(coefs),
-    estimate = unname(coefs[, "Estimate"]),
-    se = unname(coefs[, "Std. Error"]),
-    t = unname(coefs[, "t value"]),
-    p = unname(coefs[, "Pr(>|t|)"]),
-    row.names = NULL,
-    stringsAsFactors = FALSE
-  )
-}
-
-# Side-by-side comparison of the IQR-only and IQR + Cook's D OLS models.
-compare_ols_models <- function(iqr_only_model, cooks_model) {
-  iqr_tidy <- tidy_ols(iqr_only_model, "IQR_only")
-  cooks_tidy <- tidy_ols(cooks_model, "IQR_plus_CooksD")
-
-  names(iqr_tidy)[names(iqr_tidy) %in% c("estimate", "se", "t", "p")] <-
-    paste0("iqr_", c("estimate", "se", "t", "p"))
-  names(cooks_tidy)[names(cooks_tidy) %in% c("estimate", "se", "t", "p")] <-
-    paste0("cooks_", c("estimate", "se", "t", "p"))
-
-  iqr_tidy$model <- NULL
-  cooks_tidy$model <- NULL
-
-  comparison <- merge(iqr_tidy, cooks_tidy, by = "term", all = TRUE, sort = FALSE)
-  comparison$delta_estimate <- comparison$cooks_estimate - comparison$iqr_estimate
-  comparison$sign_flip <- sign(comparison$iqr_estimate) != sign(comparison$cooks_estimate)
-  comparison$sig_change <- (comparison$iqr_p < 0.05) != (comparison$cooks_p < 0.05)
-
-  comparison[, c(
-    "term",
-    "iqr_estimate", "iqr_se", "iqr_p",
-    "cooks_estimate", "cooks_se", "cooks_p",
-    "delta_estimate", "sign_flip", "sig_change"
-  ), drop = FALSE]
-}
-
 # Zero-order (Pearson) correlation matrix plus a long-format table with
 # pairwise n and p-values, for the key model variables.
 zero_order_correlations <- function(data, vars, verbose = TRUE) {
@@ -410,8 +250,8 @@ zero_order_correlations <- function(data, vars, verbose = TRUE) {
   list(matrix = cor_mat, long = long_table)
 }
 
-prepare_sem_data <- function(ancova_df) {
-  df_sem <- ancova_df
+prepare_sem_data <- function(analysis_df) {
+  df_sem <- analysis_df
   df_sem$Warmth_x_Personalization <- df_sem$Warmth * df_sem$Personalization
   df_sem$IV_Congruence <- as.integer(df_sem$Warmth == df_sem$Personalization)
 
@@ -780,20 +620,7 @@ cat(sprintf("After Python-equivalent cleaning: N = %d\n", nrow(df)))
 cat("\nCell counts after initial cleaning:\n")
 print(table(df$Warmth, df$Personalization, useNA = "ifany"))
 
-condition_cells <- data.frame(
-  Warmth = c(0, 0, 1, 1),
-  Personalization = c(0, 1, 0, 1)
-)
-
-df_clean <- remove_iqr_outliers_by_cell(
-  data = df,
-  outcome = "Slider_Difference",
-  group_vars = c("Warmth", "Personalization"),
-  cells = condition_cells,
-  iqr_mult = 1.5
-)
-
-ancova_required <- c(
+analysis_required <- c(
   "Slider_Difference", "Warmth", "Personalization",
   "ET_1", "ET_2", "ET_3", "CTI_1", "CTI_2", "CTI_3",
   "Emotional_Trust", "Integrity_Trust", "Digital_Literacy", "UF_Q1",
@@ -802,90 +629,25 @@ ancova_required <- c(
   "SD_ChangeDirection", "DV_Change_Diff"
 )
 
-ols_formula <- as.formula(
-  paste(
-    "Slider_Difference ~ factor(Warmth) * factor(Personalization)",
-    "+ Emotional_Trust + Integrity_Trust + Digital_Literacy + UF_Q1",
-    "+ P_Extraversion + P_Agreeableness + P_Openness",
-    "+ P_Conscientiousness + P_Neuroticism"
-  )
-)
-
-# --- IQR-only OLS model -----------------------------------------------------
-# Fit the OLS model on the IQR-cleaned data BEFORE Cook's D removal, so the
-# Cook's D step can be evaluated as a sensitivity analysis rather than a
-# silent precondition for the headline interaction.
-ancova_df_iqr_only <- df_clean[
-  complete.cases(df_clean[, ancova_required, drop = FALSE]),
+# Analysis sample: participants who passed the consent, verification-word and
+# completion-time checks in clean_survey_data(), with complete data.
+analysis_df <- df[
+  complete.cases(df[, analysis_required, drop = FALSE]),
   ,
   drop = FALSE
 ]
-ancova_df_iqr_only$Warmth <- as.integer(ancova_df_iqr_only$Warmth)
-ancova_df_iqr_only$Personalization <- as.integer(ancova_df_iqr_only$Personalization)
+analysis_df$Warmth <- as.integer(analysis_df$Warmth)
+analysis_df$Personalization <- as.integer(analysis_df$Personalization)
 
-model_iqr_only <- lm(ols_formula, data = ancova_df_iqr_only)
-cat("\n=== IQR-only OLS model (before Cook's D removal) ===\n")
-cat(sprintf("N = %d\n", nrow(ancova_df_iqr_only)))
-print(summary(model_iqr_only))
+cat(sprintf("\nAnalysis sample: N = %d\n", nrow(analysis_df)))
+cat("\nCell counts in the analysis sample:\n")
+print(table(analysis_df$Warmth, analysis_df$Personalization, useNA = "ifany"))
 
-cat("\nCell counts after IQR-only removal:\n")
-print(table(ancova_df_iqr_only$Warmth, ancova_df_iqr_only$Personalization, useNA = "ifany"))
-
-# --- IQR + Cook's D OLS model ----------------------------------------------
-ancova_df <- remove_outliers_by_cooks_d(
-  data = ancova_df_iqr_only,
-  formula = ols_formula,
-  threshold_mult = 4
-)
-
-model_robust <- lm(ols_formula, data = ancova_df)
-cat("\n=== Robust OLS model after IQR + Cook's D removal ===\n")
-print(summary(model_robust))
-
-cat("\n=== Standardized betas for robust OLS model ===\n")
-std_beta_table <- standardized_betas(model_robust)
-numeric_std_cols <- vapply(std_beta_table, is.numeric, logical(1))
-std_beta_table[numeric_std_cols] <- lapply(std_beta_table[numeric_std_cols], round, 4)
-print(std_beta_table, row.names = FALSE)
-
-cat("\nCell counts after both outlier removal steps:\n")
-print(table(ancova_df$Warmth, ancova_df$Personalization, useNA = "ifany"))
-
-# --- IQR-only vs IQR + Cook's D comparison ---------------------------------
-ols_model_comparison <- compare_ols_models(model_iqr_only, model_robust)
-ols_comparison_print <- ols_model_comparison
-numeric_cmp_cols <- vapply(ols_comparison_print, is.numeric, logical(1))
-ols_comparison_print[numeric_cmp_cols] <- lapply(
-  ols_comparison_print[numeric_cmp_cols], round, 4
-)
-cat("\n=== OLS model comparison: IQR-only vs IQR + Cook's D ===\n")
-cat("(sign_flip = coefficient changes sign; sig_change = crosses p = .05)\n")
-print(ols_comparison_print, row.names = FALSE)
-
-interaction_term <- "factor(Warmth)1:factor(Personalization)1"
-interaction_row <- ols_model_comparison[ols_model_comparison$term == interaction_term, , drop = FALSE]
-if (nrow(interaction_row) == 1) {
-  cat("\n--- Warmth x Personalization interaction across models ---\n")
-  cat(sprintf(
-    "IQR-only:        b = %.3f, SE = %.3f, p = %.4f\n",
-    interaction_row$iqr_estimate, interaction_row$iqr_se, interaction_row$iqr_p
-  ))
-  cat(sprintf(
-    "IQR + Cook's D:  b = %.3f, SE = %.3f, p = %.4f\n",
-    interaction_row$cooks_estimate, interaction_row$cooks_se, interaction_row$cooks_p
-  ))
-  if (isTRUE(interaction_row$sig_change)) {
-    cat("NOTE: the interaction crosses the p = .05 threshold between models.\n")
-  } else {
-    cat("The interaction's significance status is stable across both models.\n")
-  }
-}
-
-df_model <- prepare_sem_data(ancova_df)
+df_model <- prepare_sem_data(analysis_df)
 
 # --- Zero-order correlations -----------------------------------------------
-# Computed on the analysis sample (post IQR + Cook's D, pre-standardization
-# values from ancova_df) so the bivariate signs can be read alongside the
+# Computed on the analysis sample (pre-standardization values from
+# analysis_df) so the bivariate signs can be read alongside the
 # partial coefficients in the SEM. Includes both trust composites and the DV.
 zero_order_vars <- c(
   "Slider_Difference",
@@ -901,7 +663,7 @@ zero_order_vars <- c(
   "P_Conscientiousness",
   "P_Neuroticism"
 )
-zero_order <- zero_order_correlations(ancova_df, zero_order_vars)
+zero_order <- zero_order_correlations(analysis_df, zero_order_vars)
 
 measurement_diagnostics <- run_measurement_diagnostics(
   df_model = df_model,
@@ -980,6 +742,14 @@ defined_effect_cols <- c(
 defined_effects <- parameter_estimates[parameter_estimates$op == ":=", , drop = FALSE]
 defined_effects <- defined_effects[, intersect(defined_effect_cols, names(defined_effects)), drop = FALSE]
 
+# Standardized SE and 95% CI of each defined effect, as reported in the paper's
+# effect table: the bootstrap SE and percentile CI rescaled by std.all / est.
+std_scale <- defined_effects$std.all / defined_effects$est
+defined_effects$std.all.se <- abs(std_scale) * defined_effects$se
+std_ci <- cbind(defined_effects$ci.lower, defined_effects$ci.upper) * std_scale
+defined_effects$std.all.ci.lower <- pmin(std_ci[, 1], std_ci[, 2])
+defined_effects$std.all.ci.upper <- pmax(std_ci[, 1], std_ci[, 2])
+
 cat("\n=== Defined direct, indirect, and total effects ===\n")
 print(defined_effects, row.names = FALSE)
 
@@ -1024,14 +794,6 @@ print(common_method_path_comparison, row.names = FALSE)
 if (write_outputs) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
-  readr::write_csv(df_clean, file.path(output_dir, "df_after_iqr.csv"))
-  readr::write_csv(ancova_df_iqr_only, file.path(output_dir, "ancova_after_iqr_only.csv"))
-  readr::write_csv(ancova_df, file.path(output_dir, "ancova_after_iqr_and_cooksd.csv"))
-  readr::write_csv(attr(df_clean, "iqr_summary"), file.path(output_dir, "iqr_summary.csv"))
-  readr::write_csv(attr(ancova_df, "cooks_diagnostics"), file.path(output_dir, "cooks_diagnostics.csv"))
-  readr::write_csv(tidy_ols(model_iqr_only, "IQR_only"), file.path(output_dir, "ols_iqr_only.csv"))
-  readr::write_csv(tidy_ols(model_robust, "IQR_plus_CooksD"), file.path(output_dir, "ols_iqr_plus_cooksd.csv"))
-  readr::write_csv(ols_model_comparison, file.path(output_dir, "ols_model_comparison.csv"))
   zero_order_matrix_df <- as.data.frame(round(zero_order$matrix, 4))
   zero_order_matrix_df <- cbind(variable = rownames(zero_order_matrix_df), zero_order_matrix_df)
   readr::write_csv(zero_order_matrix_df, file.path(output_dir, "zero_order_correlation_matrix.csv"))

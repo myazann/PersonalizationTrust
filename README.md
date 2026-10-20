@@ -22,8 +22,10 @@ The main outcomes were:
 - **Reliance:** post-interaction approval of the anti-expert position,
   controlling for the participant's pre-interaction decision.
 
-The final SEM analyses use **N = 380** participants after attention, timing,
-missingness, and outlier filtering.
+The SEM analyses use **N = 407** of the 429 participants who completed the
+study. Participants were excluded if they did not consent, gave the wrong
+verification word (a word the assistant gave during the interaction), or
+completed the study in 5 minutes or less or in 41.7 minutes or more.
 
 ## The Experiment
 
@@ -35,11 +37,11 @@ missingness, and outlier filtering.
 
 |     | $\beta$ | p-value | Interpretation |
 | --- | ---: | ---: | --- |
-| Warmth | -0.164 | .021 | Warmth alone reduces persuasiveness. |
-| Contextualization | -0.198 | .003 | Contextualization alone reduces persuasiveness. |
-| Warmth x Contextualization | 0.259 | .002 | The combined condition reversed the single-cue patterns, increasing persuasion. |
-| Emotional Trust | -0.296 | < .001 | Higher emotional trust predicted less persuasion by the AI. |
-| Competent Trust | 0.326 | < .001 | Higher competent trust predicted more persuasion by the AI. |
+| Warmth | -0.150 | .031 | Warmth alone reduces persuasiveness. |
+| Contextualization | -0.148 | .033 | Contextualization alone reduces persuasiveness. |
+| Warmth x Contextualization | 0.203 | .017 | The combined condition reversed the single-cue patterns, increasing persuasion. |
+| Emotional Trust | -0.200 | .015 | Higher emotional trust predicted less persuasion by the AI. |
+| Competent Trust | 0.196 | .030 | Higher competent trust predicted more persuasion by the AI. |
 
 Indirect effects through emotional and competent trust were not significant.
 The main result is therefore a direct interaction effect:
@@ -55,20 +57,20 @@ decreased, or stayed the same after the AI interaction. The strongest shifts
 away from the experts appear when both cues are absent (W=0, C=0) or both are
 present (W=1, C=1): in both cases, more than half of participants reported
 lower confidence in the experts. When only one cue was present, the shift was
-weaker, with decreases closer to 42-44%.
+weaker, with decreases of about 44%.
 
 ### Reliance Model
 
 |     | $\beta$| p-value | Interpretation |
 | --- | ---: | ---: | --- |
-| Competent Trust | 0.220 | .025 | Competent trust predicted greater reliance on the AI. |
-| AI Literacy | 0.167 | .020 | Higher AI literacy was associated with greater reliance. |
-| Agreeableness | -0.140 | .046 | Higher agreeableness was associated with less reliance. |
-| Warmth | -0.029 | .726 | No significant direct effect. |
-| Contextualization | -0.028 | .751 | No significant direct effect. |
-| Warmth x Contextualization | 0.099 | .359 | No significant interaction effect. |
+| Competent Trust | 0.209 | .040 | Competent trust predicted greater reliance on the AI. |
+| AI Literacy | 0.176 | .008 | Higher AI literacy was associated with greater reliance. |
+| Agreeableness | -0.142 | .032 | Higher agreeableness was associated with less reliance. |
+| Warmth | -0.042 | .607 | No significant direct effect. |
+| Contextualization | -0.011 | .900 | No significant direct effect. |
+| Warmth x Contextualization | 0.081 | .438 | No significant interaction effect. |
 
-Across conditions, 35-44% of participants shifted from approving the experts'
+Across conditions, 38-44% of participants shifted from approving the experts'
 budget to rejecting it after interacting with the AI, suggesting that reliance
 was persistent but not meaningfully changed by the warmth or contextualization
 manipulations.
@@ -80,7 +82,7 @@ manipulations.
 The alluvial plot tracks whether participants approved (A) or rejected (R) the
 expert-recommended budget before and after the AI interaction. Since the AI
 argued against the experts, movement from A to R represents reliance on the AI.
-Across conditions, 35-44% of participants switched from approval to rejection,
+Across conditions, 38-44% of participants switched from approval to rejection,
 and the post-interaction distributions converged despite different starting
 levels of expert approval. 
 
@@ -88,13 +90,16 @@ levels of expert approval.
 
 - `app.py`, `chat_helpers.py`, `SYS_PROMPT.txt`: Gradio chatbot used in the
   Qualtrics experiment.
-- `Qualtrics_Survey.pdf`: survey instrument.
-- `sem_analysis.R`: persuasion analysis using OLS checks and SEM.
+- `sem_analysis.R`: persuasion SEM.
 - `sem_binary_analysis.R`: binary reliance SEM.
 - `sem_power.R`: Monte Carlo power analysis for the SEM.
 
 Generated local outputs, when present, are written to `sem_outputs/`,
-`sem_binary_outputs/`, `power_outputs/`, and `Images/`.
+`sem_binary_outputs/`, `power_outputs/`, and `Images/`. The standardized
+effects in the paper's effect tables (beta, SE and 95% CI) are the `std.all`,
+`std.all.se`, `std.all.ci.lower` and `std.all.ci.upper` columns of
+`sem_outputs/sem_defined_effects.csv` and
+`sem_binary_outputs/binary_sem_all_defined_effects.csv`.
 
 ## Reproducing Analyses
 

@@ -139,9 +139,11 @@ clean_survey_data <- function(path) {
   numeric_cols <- intersect(numeric_cols, names(df))
   df[numeric_cols] <- lapply(df[numeric_cols], to_numeric)
 
+  # Missing Big Five items: item-mean imputation, matching sem_analysis.R.
+  # (Previously zero-imputed, which put values outside the 1-5 item scale.)
   personality_columns <- intersect(personality_columns, names(df))
   df[personality_columns] <- lapply(df[personality_columns], function(x) {
-    x[is.na(x)] <- 0
+    x[is.na(x)] <- mean(x, na.rm = TRUE)
     x
   })
 
@@ -183,6 +185,9 @@ clean_survey_data <- function(path) {
   df$Integrity_Trust <- rowMeans(select_existing(df, integrity_trust_columns), na.rm = TRUE)
   df$Digital_Literacy <- rowMeans(select_existing(df, digital_literacy_columns), na.rm = TRUE)
   df$UF_Q1 <- as.integer(df$UF_Q1)
+  # Reverse so higher = more frequent use (1 = Never ... 7 = 3+ times a day),
+  # matching sem_analysis.R, Table 4, and the persuasion tables.
+  df$UF_Q1 <- 8 - df$UF_Q1
 
   df$IV_Congruence <- 1L
   df$IV_Congruence <- set_value_where(
@@ -204,109 +209,8 @@ clean_survey_data <- function(path) {
   df
 }
 
-remove_iqr_outliers_by_cell <- function(data,
-                                        outcome,
-                                        group_vars,
-                                        cells,
-                                        iqr_mult = 1.5,
-                                        verbose = TRUE) {
-  flagged <- rep(FALSE, nrow(data))
-  summaries <- list()
-
-  for (i in seq_len(nrow(cells))) {
-    cell_mask <- rep(TRUE, nrow(data))
-    cell_label_parts <- character(length(group_vars))
-
-    for (j in seq_along(group_vars)) {
-      group_var <- group_vars[j]
-      group_value <- cells[[group_var]][i]
-      cell_mask <- cell_mask & !is.na(data[[group_var]]) & data[[group_var]] == group_value
-      cell_label_parts[j] <- paste0(group_var, "=", group_value)
-    }
-
-    idx <- which(cell_mask & !is.na(data[[outcome]]))
-    if (length(idx) == 0) next
-
-    x <- data[[outcome]][idx]
-    q <- quantile(x, c(0.25, 0.75), na.rm = TRUE, type = 7)
-    iqr <- q[[2]] - q[[1]]
-    lower <- q[[1]] - iqr_mult * iqr
-    upper <- q[[2]] + iqr_mult * iqr
-    cell_flag <- x < lower | x > upper
-    flagged[idx[cell_flag]] <- TRUE
-
-    summaries[[length(summaries) + 1L]] <- data.frame(
-      cell = paste(cell_label_parts, collapse = ", "),
-      n = length(x),
-      q1 = unname(q[[1]]),
-      q3 = unname(q[[2]]),
-      iqr = unname(iqr),
-      lower = unname(lower),
-      upper = unname(upper),
-      flagged = sum(cell_flag),
-      stringsAsFactors = FALSE
-    )
-  }
-
-  summary_table <- dplyr::bind_rows(summaries)
-
-  if (verbose) {
-    cat("\n=== IQR outlier removal by Warmth x Personalization ===\n")
-    print(summary_table, row.names = FALSE)
-    cat(sprintf(
-      "\nIQR step: flagged %d; N: %d -> %d\n",
-      sum(flagged), nrow(data), nrow(data) - sum(flagged)
-    ))
-  }
-
-  result <- data[!flagged, , drop = FALSE]
-  attr(result, "iqr_summary") <- summary_table
-  attr(result, "iqr_outliers") <- data[flagged, , drop = FALSE]
-  result
-}
-
-remove_outliers_by_cooks_d <- function(data,
-                                       formula,
-                                       threshold_mult = 4,
-                                       verbose = TRUE) {
-  required <- all.vars(formula)
-  d <- data[complete.cases(data[, required, drop = FALSE]), , drop = FALSE]
-  fit <- lm(formula, data = d)
-  cooks <- cooks.distance(fit)
-  threshold <- threshold_mult / nrow(d)
-  flagged <- cooks > threshold
-
-  diagnostics <- data.frame(
-    row_in_model = seq_len(nrow(d)),
-    python_index = if (".python_index" %in% names(d)) d$.python_index else NA_integer_,
-    cooks_d = unname(cooks),
-    flagged = unname(flagged),
-    stringsAsFactors = FALSE
-  )
-
-  if (verbose) {
-    cat("\n=== Cook's D outlier removal from OLS influence ===\n")
-    cat(sprintf(
-      "Cook's D step: threshold = %d/n = %.4f; flagged %d; N: %d -> %d\n",
-      threshold_mult,
-      threshold,
-      sum(flagged, na.rm = TRUE),
-      nrow(d),
-      sum(!flagged, na.rm = TRUE)
-    ))
-    if (any(flagged, na.rm = TRUE)) {
-      print(diagnostics[flagged, , drop = FALSE], row.names = FALSE)
-    }
-  }
-
-  result <- d[!flagged, , drop = FALSE]
-  attr(result, "cooks_diagnostics") <- diagnostics
-  attr(result, "initial_lm") <- fit
-  result
-}
-
-prepare_binary_sem_data <- function(ancova_df) {
-  df_sem <- ancova_df
+prepare_binary_sem_data <- function(analysis_df) {
+  df_sem <- analysis_df
   df_sem$Warmth_x_Personalization <- df_sem$Warmth * df_sem$Personalization
   df_sem$IV_Congruence <- as.integer(df_sem$Warmth == df_sem$Personalization)
 
@@ -538,6 +442,18 @@ defined_effect_cols <- c(
 extract_defined_effects <- function(parameter_estimates) {
   defined_effects <- parameter_estimates[parameter_estimates$op == ":=", , drop = FALSE]
   defined_effects[, intersect(defined_effect_cols, names(defined_effects)), drop = FALSE]
+}
+
+# Standardized SE and 95% CI of each defined effect, as reported in the paper's
+# effect tables: delta-method values from standardizedSolution() (std.all).
+add_standardized_effect_columns <- function(defined_effects, fit) {
+  std_solution <- standardizedSolution(fit, type = "std.all", se = TRUE, ci = TRUE, level = 0.95)
+  std_solution <- std_solution[std_solution$op == ":=", , drop = FALSE]
+  idx <- match(defined_effects$label, std_solution$label)
+  defined_effects$std.all.se <- std_solution$se[idx]
+  defined_effects$std.all.ci.lower <- std_solution$ci.lower[idx]
+  defined_effects$std.all.ci.upper <- std_solution$ci.upper[idx]
+  defined_effects
 }
 
 extract_fit_measures <- function(fit, fit_measure_names) {
@@ -861,6 +777,7 @@ run_binary_sem <- function(df_model,
     level = 0.95
   )
   defined_effects <- extract_defined_effects(parameter_estimates)
+  defined_effects <- add_standardized_effect_columns(defined_effects, fit)
 
   latent_reliability <- calculate_ave_cr(parameter_estimates, latent_indicator_map)
   discriminant_validity <- calculate_discriminant_validity(parameter_estimates, latent_reliability)
@@ -986,22 +903,7 @@ cat(sprintf("After Python-equivalent cleaning: N = %d\n", nrow(df)))
 cat("\nCell counts after initial cleaning:\n")
 print(table(df$Warmth, df$Personalization, useNA = "ifany"))
 
-condition_cells <- data.frame(
-  Warmth = c(0, 0, 1, 1),
-  Personalization = c(0, 1, 0, 1)
-)
-
-# Keep this aligned with the notebook's logistic section: binary models use
-# ancova_df after the same slider IQR and Cook's D screens.
-df_clean <- remove_iqr_outliers_by_cell(
-  data = df,
-  outcome = "Slider_Difference",
-  group_vars = c("Warmth", "Personalization"),
-  cells = condition_cells,
-  iqr_mult = 1.5
-)
-
-ancova_required <- c(
+analysis_required <- c(
   "Slider_Difference", "Warmth", "Personalization",
   "PostDV_Binary", "PreDV_Binary",
   "ET_1", "ET_2", "ET_3", "CTI_1", "CTI_2", "CTI_3",
@@ -1011,35 +913,23 @@ ancova_required <- c(
   "SD_ChangeDirection", "DV_Change_Diff"
 )
 
-ancova_df <- df_clean[
-  complete.cases(df_clean[, ancova_required, drop = FALSE]),
+# Analysis sample: the same participants as in sem_analysis.R (consent,
+# verification-word and completion-time checks, complete data).
+analysis_df <- df[
+  complete.cases(df[, analysis_required, drop = FALSE]),
   ,
   drop = FALSE
 ]
-ancova_df$Warmth <- as.integer(ancova_df$Warmth)
-ancova_df$Personalization <- as.integer(ancova_df$Personalization)
+analysis_df$Warmth <- as.integer(analysis_df$Warmth)
+analysis_df$Personalization <- as.integer(analysis_df$Personalization)
 
-ols_formula <- as.formula(
-  paste(
-    "Slider_Difference ~ factor(Warmth) * factor(Personalization)",
-    "+ Emotional_Trust + Integrity_Trust + Digital_Literacy + UF_Q1",
-    "+ P_Extraversion + P_Agreeableness + P_Openness",
-    "+ P_Conscientiousness + P_Neuroticism"
-  )
-)
-
-ancova_df <- remove_outliers_by_cooks_d(
-  data = ancova_df,
-  formula = ols_formula,
-  threshold_mult = 4
-)
-
-cat("\nCell counts after both outlier removal steps:\n")
-print(table(ancova_df$Warmth, ancova_df$Personalization, useNA = "ifany"))
+cat(sprintf("\nAnalysis sample: N = %d\n", nrow(analysis_df)))
+cat("\nCell counts in the analysis sample:\n")
+print(table(analysis_df$Warmth, analysis_df$Personalization, useNA = "ifany"))
 
 set.seed(seed)
 
-df_model_binary_all <- prepare_binary_sem_data(ancova_df)
+df_model_binary_all <- prepare_binary_sem_data(analysis_df)
 binary_sem <- run_binary_sem(
   df_model = df_model_binary_all,
   model = binary_sem_model,
@@ -1053,21 +943,21 @@ binary_sem <- run_binary_sem(
 # Supplementary analysis: restrict to participants who initially approved.
 # The raw Qualtrics binary coding uses 1 = Yes and 2 = No; prepare_binary_sem_data()
 # then recodes this to 0/1 for the binary SEM.
-ancova_df_initial_yes <- ancova_df[
-  !is.na(ancova_df$PreDV_Binary) & ancova_df$PreDV_Binary == 1,
+analysis_df_initial_yes <- analysis_df[
+  !is.na(analysis_df$PreDV_Binary) & analysis_df$PreDV_Binary == 1,
   ,
   drop = FALSE
 ]
 cat("\n=== Supplementary binary SEM subset: initially yes ===\n")
-cat(sprintf("N before SEM complete-case filtering = %d\n", nrow(ancova_df_initial_yes)))
+cat(sprintf("N before SEM complete-case filtering = %d\n", nrow(analysis_df_initial_yes)))
 cat("\nRaw PreDV_Binary x PostDV_Binary counts before 0/1 recode:\n")
 print(table(
-  ancova_df_initial_yes$PreDV_Binary,
-  ancova_df_initial_yes$PostDV_Binary,
+  analysis_df_initial_yes$PreDV_Binary,
+  analysis_df_initial_yes$PostDV_Binary,
   useNA = "ifany"
 ))
 
-df_model_binary_initial_yes <- prepare_binary_sem_data(ancova_df_initial_yes)
+df_model_binary_initial_yes <- prepare_binary_sem_data(analysis_df_initial_yes)
 binary_sem_initial_yes <- run_binary_sem(
   df_model = df_model_binary_initial_yes,
   model = binary_sem_without_pre_model,
@@ -1082,10 +972,5 @@ binary_sem_initial_yes <- run_binary_sem(
 
 if (write_outputs) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
-  readr::write_csv(df_clean, file.path(output_dir, "df_after_iqr.csv"))
-  readr::write_csv(ancova_df, file.path(output_dir, "ancova_after_iqr_and_cooksd.csv"))
-  readr::write_csv(attr(df_clean, "iqr_summary"), file.path(output_dir, "iqr_summary.csv"))
-  readr::write_csv(attr(ancova_df, "cooks_diagnostics"), file.path(output_dir, "cooks_diagnostics.csv"))
-
   cat(sprintf("\nWrote binary SEM output tables to %s\n", output_dir))
 }

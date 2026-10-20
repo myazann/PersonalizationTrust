@@ -7,13 +7,13 @@
 # -----------------------------------------------------------------------------
 # IMPORTANT - THIS SCRIPT IS SELF-CONTAINED
 # -----------------------------------------------------------------------------
-# It carries its own copy of the data-cleaning pipeline, the outlier-removal
-# steps, and the SEM model syntax, copied from stormshield_sem.R. It does NOT
-# source the main script. If you revise the cleaning pipeline, the outlier
-# rules, the covariate set, or the model syntax in stormshield_sem.R, you MUST
-# mirror those edits here or the power analysis will describe a different model
-# than the one you report. The blocks copied from the main script are fenced
-# with "### --- BEGIN/END copied from stormshield_sem.R --- ###".
+# It carries its own copy of the data-cleaning pipeline and the SEM model
+# syntax, copied from stormshield_sem.R. It does NOT source the main script.
+# If you revise the cleaning pipeline, the covariate set, or the model syntax
+# in stormshield_sem.R, you MUST mirror those edits here or the power analysis
+# will describe a different model than the one you report. The blocks copied
+# from the main script are fenced with
+# "### --- BEGIN/END copied from stormshield_sem.R --- ###".
 #
 # -----------------------------------------------------------------------------
 # WHY THIS REWRITE EXISTS
@@ -205,7 +205,7 @@ clean_survey_data <- function(path) {
     x
   })
   
-  df$Slider_Difference <- df$PostDV_Slider_1 - df$PreDV_Slider_1
+  df$Slider_Difference <- df$PreDV_Slider_1 - df$PostDV_Slider_1
   
   df$SD_ChangeDirection <- "No Change"
   df$SD_ChangeDirection <- set_value_where(df$SD_ChangeDirection, df$Slider_Difference > 0, "Increase")
@@ -223,6 +223,7 @@ clean_survey_data <- function(path) {
   df$Integrity_Trust <- rowMeans(select_existing(df, integrity_trust_columns), na.rm = TRUE)
   df$Digital_Literacy <- rowMeans(select_existing(df, digital_literacy_columns), na.rm = TRUE)
   df$UF_Q1 <- as.integer(df$UF_Q1)
+  df$UF_Q1 <- 8 - df$UF_Q1
   
   df$IV_Congruence <- 1L
   df$IV_Congruence <- set_value_where(df$IV_Congruence, (df$Warmth + df$Personalization) == 1, 0L)
@@ -239,41 +240,8 @@ clean_survey_data <- function(path) {
   df
 }
 
-remove_iqr_outliers_by_cell <- function(data, outcome, group_vars, cells,
-                                        iqr_mult = 1.5) {
-  flagged <- rep(FALSE, nrow(data))
-  for (i in seq_len(nrow(cells))) {
-    cell_mask <- rep(TRUE, nrow(data))
-    for (j in seq_along(group_vars)) {
-      group_var <- group_vars[j]
-      group_value <- cells[[group_var]][i]
-      cell_mask <- cell_mask & !is.na(data[[group_var]]) & data[[group_var]] == group_value
-    }
-    idx <- which(cell_mask & !is.na(data[[outcome]]))
-    if (length(idx) == 0) next
-    x <- data[[outcome]][idx]
-    q <- quantile(x, c(0.25, 0.75), na.rm = TRUE, type = 7)
-    iqr <- q[[2]] - q[[1]]
-    lower <- q[[1]] - iqr_mult * iqr
-    upper <- q[[2]] + iqr_mult * iqr
-    cell_flag <- x < lower | x > upper
-    flagged[idx[cell_flag]] <- TRUE
-  }
-  data[!flagged, , drop = FALSE]
-}
-
-remove_outliers_by_cooks_d <- function(data, formula, threshold_mult = 4) {
-  required <- all.vars(formula)
-  d <- data[complete.cases(data[, required, drop = FALSE]), , drop = FALSE]
-  fit <- lm(formula, data = d)
-  cooks <- cooks.distance(fit)
-  threshold <- threshold_mult / nrow(d)
-  flagged <- cooks > threshold
-  d[!flagged, , drop = FALSE]
-}
-
-prepare_sem_data <- function(ancova_df) {
-  df_sem <- ancova_df
+prepare_sem_data <- function(analysis_df) {
+  df_sem <- analysis_df
   df_sem$Warmth_x_Personalization <- df_sem$Warmth * df_sem$Personalization
   df_sem$IV_Congruence <- as.integer(df_sem$Warmth == df_sem$Personalization)
   
@@ -346,17 +314,7 @@ if (!file.exists(input_file)) {
 
 df <- clean_survey_data(input_file)
 
-condition_cells <- data.frame(
-  Warmth = c(0, 0, 1, 1),
-  Personalization = c(0, 1, 0, 1)
-)
-df_clean <- remove_iqr_outliers_by_cell(
-  data = df, outcome = "Slider_Difference",
-  group_vars = c("Warmth", "Personalization"),
-  cells = condition_cells, iqr_mult = 1.5
-)
-
-ancova_required <- c(
+analysis_required <- c(
   "Slider_Difference", "Warmth", "Personalization",
   "ET_1", "ET_2", "ET_3", "CTI_1", "CTI_2", "CTI_3",
   "Emotional_Trust", "Integrity_Trust", "Digital_Literacy", "UF_Q1",
@@ -364,25 +322,14 @@ ancova_required <- c(
   "P_Conscientiousness", "P_Neuroticism",
   "SD_ChangeDirection", "DV_Change_Diff"
 )
-ols_formula <- as.formula(
-  paste(
-    "Slider_Difference ~ factor(Warmth) * factor(Personalization)",
-    "+ Emotional_Trust + Integrity_Trust + Digital_Literacy + UF_Q1",
-    "+ P_Extraversion + P_Agreeableness + P_Openness",
-    "+ P_Conscientiousness + P_Neuroticism"
-  )
-)
 
-ancova_df_iqr_only <- df_clean[
-  complete.cases(df_clean[, ancova_required, drop = FALSE]), , drop = FALSE
+analysis_df <- df[
+  complete.cases(df[, analysis_required, drop = FALSE]), , drop = FALSE
 ]
-ancova_df_iqr_only$Warmth <- as.integer(ancova_df_iqr_only$Warmth)
-ancova_df_iqr_only$Personalization <- as.integer(ancova_df_iqr_only$Personalization)
+analysis_df$Warmth <- as.integer(analysis_df$Warmth)
+analysis_df$Personalization <- as.integer(analysis_df$Personalization)
 
-ancova_df <- remove_outliers_by_cooks_d(
-  data = ancova_df_iqr_only, formula = ols_formula, threshold_mult = 4
-)
-df_model <- prepare_sem_data(ancova_df)
+df_model <- prepare_sem_data(analysis_df)
 analysis_n <- nrow(df_model)
 
 cat(sprintf("Analysis data prepared. N = %d.\n", analysis_n))
