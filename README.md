@@ -90,8 +90,10 @@ levels of expert approval.
 
 - `app.py`, `chat_helpers.py`, `SYS_PROMPT.txt`: Gradio chatbot used in the
   Qualtrics experiment.
-- `sem_analysis.R`: persuasion SEM.
-- `sem_binary_analysis.R`: binary reliance SEM.
+- `sem_analysis.R`: persuasion SEM, plus the ConfDiff statistics by condition
+  (cell means, adjusted means and contrasts; Appendix A).
+- `sem_binary_analysis.R`: binary reliance SEM, plus the approval transitions
+  and predicted probabilities by condition (Appendix A).
 - `sem_power.R`: Monte Carlo power analysis for the SEM.
 
 Generated local outputs, when present, are written to `sem_outputs/`,
@@ -99,7 +101,14 @@ Generated local outputs, when present, are written to `sem_outputs/`,
 effects in the paper's effect tables (beta, SE and 95% CI) are the `std.all`,
 `std.all.se`, `std.all.ci.lower` and `std.all.ci.upper` columns of
 `sem_outputs/sem_defined_effects.csv` and
-`sem_binary_outputs/binary_sem_all_defined_effects.csv`.
+`sem_binary_outputs/binary_sem_all_defined_effects.csv`. The condition tables
+of Appendix A are `sem_outputs/confdiff_cell_descriptives.csv`,
+`sem_outputs/confdiff_adjusted_means_contrasts.csv`,
+`sem_binary_outputs/approval_transitions.csv`,
+`sem_binary_outputs/approval_transition_tests.csv` and
+`sem_binary_outputs/approval_predicted_probabilities.csv`. The predicted
+probabilities use 2,000 bootstrap fits by default; set
+`SEM_BINARY_PRED_BOOTSTRAPS` to change this.
 
 ## Reproducing Analyses
 

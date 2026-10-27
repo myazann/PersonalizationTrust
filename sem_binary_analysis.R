@@ -974,3 +974,168 @@ if (write_outputs) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   cat(sprintf("\nWrote binary SEM output tables to %s\n", output_dir))
 }
+
+
+# --- Approval transitions and predicted probabilities (Appendix A) ----------
+# Table A.3. Raw Qualtrics coding: 1 = approve the expert-recommended budget
+# (A, pro-expert), 2 = reject it (R, anti-expert). Predicted probabilities of
+# rejection after the interaction come from the probit equation of the
+# all-sample binary SEM (its reduced form, which includes the paths through
+# trust), for an initial approval or rejection, averaged over the observed
+# covariate values of all participants. 95% CIs: percentile bootstrap,
+# refitting the WLSMV model on resampled rows.
+n_pred_boot <- parse_int_env("SEM_BINARY_PRED_BOOTSTRAPS", 2000)
+
+transition_row <- function(data, cell) {
+  pre_a <- data$PreDV_Binary == 1
+  post_a <- data$PostDV_Binary == 1
+  data.frame(
+    cell = cell,
+    n = nrow(data),
+    A_to_A = sum(pre_a & post_a),
+    A_to_R = sum(pre_a & !post_a),
+    R_to_A = sum(!pre_a & post_a),
+    R_to_R = sum(!pre_a & !post_a),
+    switch_A_to_R_pct = 100 * sum(pre_a & !post_a) / sum(pre_a),
+    switch_R_to_A_pct = 100 * sum(!pre_a & post_a) / sum(!pre_a),
+    pre_A_pct = 100 * mean(pre_a),
+    post_A_pct = 100 * mean(post_a),
+    stringsAsFactors = FALSE
+  )
+}
+
+transition_cells <- expand.grid(Warmth = 0:1, Personalization = 0:1)
+transition_cells <- transition_cells[order(transition_cells$Warmth, transition_cells$Personalization), ]
+transition_cell <- paste0(analysis_df$Warmth, "|", analysis_df$Personalization)
+transition_table <- dplyr::bind_rows(c(
+  lapply(seq_len(nrow(transition_cells)), function(i) {
+    label <- paste0(transition_cells$Warmth[i], "|", transition_cells$Personalization[i])
+    transition_row(analysis_df[transition_cell == label, , drop = FALSE], label)
+  }),
+  list(transition_row(analysis_df, "Total"))
+))
+
+pre_label <- ifelse(analysis_df$PreDV_Binary == 1, "A", "R")
+post_label <- ifelse(analysis_df$PostDV_Binary == 1, "A", "R")
+transition_tests <- list(
+  initial_decision_by_condition = suppressWarnings(chisq.test(table(transition_cell, pre_label))),
+  final_decision_by_condition = suppressWarnings(chisq.test(table(transition_cell, post_label))),
+  switch_A_to_R_by_condition = suppressWarnings(chisq.test(
+    table(transition_cell[pre_label == "A"], post_label[pre_label == "A"])
+  )),
+  switch_R_to_A_by_condition = fisher.test(
+    table(transition_cell[pre_label == "R"], post_label[pre_label == "R"])
+  )
+)
+transition_test_table <- dplyr::bind_rows(lapply(names(transition_tests), function(name) {
+  test <- transition_tests[[name]]
+  data.frame(
+    test = name,
+    method = test$method,
+    statistic = if (is.null(test$statistic)) NA_real_ else unname(test$statistic),
+    df = if (is.null(test$parameter)) NA_real_ else unname(test$parameter),
+    p = test$p.value,
+    stringsAsFactors = FALSE
+  )
+}))
+
+cat("\n=== Approval transitions by condition (Appendix A, Table A.3) ===\n")
+print(transition_table, row.names = FALSE, digits = 4)
+print(transition_test_table, row.names = FALSE, digits = 4)
+
+predict_post_probabilities <- function(fit, data) {
+  implied <- lavInspect(fit, "implied")
+  slopes <- implied$res.slopes["PostDV_Binary", ]
+  intercept <- implied$res.int["PostDV_Binary"]
+  threshold <- implied$res.th[grep("^PostDV_Binary", names(implied$res.th))]
+  residual_sd <- sqrt(implied$res.cov["PostDV_Binary", "PostDV_Binary"])
+  x <- as.matrix(data[, names(slopes)])
+  out <- c()
+  for (w in 0:1) for (p in 0:1) for (pre in 0:1) {
+    xs <- x
+    xs[, "Warmth"] <- w
+    xs[, "Personalization"] <- p
+    xs[, "Warmth_x_Personalization"] <- w * p
+    xs[, "PreDV_Binary"] <- pre
+    eta <- as.numeric(intercept + xs %*% slopes)
+    out[sprintf("W%d_C%d_Pre%d", w, p, pre)] <- mean(1 - pnorm((threshold - eta) / residual_sd))
+  }
+  out
+}
+
+predicted_probability_contrasts <- function(prob) {
+  g <- function(w, p, pre) prob[[sprintf("W%d_C%d_Pre%d", w, p, pre)]]
+  out <- c()
+  for (pre in 0:1) {
+    out[sprintf("Pre%d: contextualization without warmth", pre)] <- g(0, 1, pre) - g(0, 0, pre)
+    out[sprintf("Pre%d: contextualization with warmth", pre)] <- g(1, 1, pre) - g(1, 0, pre)
+    out[sprintf("Pre%d: warmth without contextualization", pre)] <- g(1, 0, pre) - g(0, 0, pre)
+    out[sprintf("Pre%d: warmth with contextualization", pre)] <- g(1, 1, pre) - g(0, 1, pre)
+    out[sprintf("Pre%d: interaction", pre)] <- (g(1, 1, pre) - g(1, 0, pre)) - (g(0, 1, pre) - g(0, 0, pre))
+  }
+  out
+}
+
+fit_binary_for_prediction <- function(data) {
+  lavaan::sem(
+    binary_sem_model,
+    data = data,
+    ordered = "PostDV_Binary",
+    estimator = "WLSMV",
+    fixed.x = TRUE
+  )
+}
+
+prediction_fit <- fit_binary_for_prediction(df_model_binary_all)
+predicted_probabilities <- predict_post_probabilities(prediction_fit, df_model_binary_all)
+predicted_contrasts <- predicted_probability_contrasts(predicted_probabilities)
+
+prediction_boot <- matrix(
+  NA_real_,
+  nrow = n_pred_boot,
+  ncol = length(predicted_probabilities) + length(predicted_contrasts)
+)
+if (n_pred_boot > 0) {
+  set.seed(seed)
+  for (b in seq_len(n_pred_boot)) {
+    resampled <- df_model_binary_all[sample.int(nrow(df_model_binary_all), replace = TRUE), ]
+    fit_b <- tryCatch(
+      suppressWarnings(fit_binary_for_prediction(resampled)),
+      error = function(e) NULL
+    )
+    if (is.null(fit_b) || !lavInspect(fit_b, "converged")) next
+    prob_b <- predict_post_probabilities(fit_b, resampled)
+    prediction_boot[b, ] <- c(prob_b, predicted_probability_contrasts(prob_b))
+  }
+}
+
+prediction_estimates <- c(predicted_probabilities, predicted_contrasts)
+prediction_table <- data.frame(
+  term = names(prediction_estimates),
+  estimate = unname(prediction_estimates),
+  ci_lower = apply(prediction_boot, 2, function(z) unname(quantile(z, 0.025, na.rm = TRUE))),
+  ci_upper = apply(prediction_boot, 2, function(z) unname(quantile(z, 0.975, na.rm = TRUE))),
+  p_boot = apply(prediction_boot, 2, function(z) {
+    z <- z[!is.na(z)]
+    if (length(z) == 0) NA_real_ else 2 * min(mean(z <= 0), mean(z >= 0))
+  }),
+  valid_resamples = sum(stats::complete.cases(prediction_boot)),
+  stringsAsFactors = FALSE
+)
+# p_boot is only meaningful for the contrasts, not for the probabilities.
+prediction_table$p_boot[seq_along(predicted_probabilities)] <- NA_real_
+
+cat(sprintf(
+  "\n=== Predicted P(reject after the interaction) by condition (Table A.3; %d of %d bootstrap fits converged) ===\n",
+  sum(stats::complete.cases(prediction_boot)), n_pred_boot
+))
+print(prediction_table, row.names = FALSE, digits = 4)
+
+if (write_outputs) {
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  readr::write_csv(transition_table, file.path(output_dir, "approval_transitions.csv"))
+  readr::write_csv(transition_test_table, file.path(output_dir, "approval_transition_tests.csv"))
+  readr::write_csv(prediction_table, file.path(output_dir, "approval_predicted_probabilities.csv"))
+  cat(sprintf("\nWrote approval transition tables to %s\n", output_dir))
+}
+

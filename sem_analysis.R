@@ -828,3 +828,145 @@ if (write_outputs) {
 
   cat(sprintf("\nWrote output tables to %s\n", output_dir))
 }
+
+# --- ConfDiff by condition: cell statistics, adjusted means, contrasts ------
+# Appendix A (Table A.2 and Figure A.1). ConfDiff = Slider_Difference
+# (confidence before minus after the interaction, raw 0-100 scale). Adjusted
+# means and contrasts come from a linear model with warmth, contextualization,
+# their interaction and the SEM covariates (standardized, so the adjusted
+# means are evaluated at the covariate means). Contrasts are computed from the
+# model coefficients; HC3 standard errors and a model without covariates are
+# reported as robustness checks.
+cell_label <- function(w, p) paste0(w, "|", p)
+
+t_ci <- function(x) {
+  n <- length(x)
+  half <- qt(0.975, n - 1) * sd(x) / sqrt(n)
+  c(lower = mean(x) - half, upper = mean(x) + half)
+}
+
+describe_confdiff <- function(data, cell) {
+  ci <- t_ci(data$Slider_Difference)
+  data.frame(
+    cell = cell,
+    n = nrow(data),
+    conf_pre_mean = mean(data$PreDV_Slider_1),
+    conf_pre_sd = sd(data$PreDV_Slider_1),
+    conf_post_mean = mean(data$PostDV_Slider_1),
+    conf_post_sd = sd(data$PostDV_Slider_1),
+    confdiff_mean = mean(data$Slider_Difference),
+    confdiff_sd = sd(data$Slider_Difference),
+    confdiff_ci_lower = unname(ci["lower"]),
+    confdiff_ci_upper = unname(ci["upper"]),
+    stringsAsFactors = FALSE
+  )
+}
+
+confdiff_cells <- expand.grid(Warmth = 0:1, Personalization = 0:1)
+confdiff_cells <- confdiff_cells[order(confdiff_cells$Warmth, confdiff_cells$Personalization), ]
+confdiff_cell_table <- dplyr::bind_rows(c(
+  lapply(seq_len(nrow(confdiff_cells)), function(i) {
+    w <- confdiff_cells$Warmth[i]
+    p <- confdiff_cells$Personalization[i]
+    describe_confdiff(
+      analysis_df[analysis_df$Warmth == w & analysis_df$Personalization == p, , drop = FALSE],
+      cell_label(w, p)
+    )
+  }),
+  list(describe_confdiff(analysis_df, "Total"))
+))
+
+confdiff_covariates <- c(
+  "Digital_Literacy", "UF_Q1", "P_Extraversion", "P_Agreeableness",
+  "P_Openness", "P_Conscientiousness", "P_Neuroticism"
+)
+confdiff_data <- analysis_df[, c("Slider_Difference", "Warmth", "Personalization", confdiff_covariates)]
+confdiff_data[confdiff_covariates] <- lapply(confdiff_data[confdiff_covariates], z_score)
+
+hc3_vcov <- function(model) {
+  x <- model.matrix(model)
+  bread <- solve(crossprod(x))
+  h <- rowSums((x %*% bread) * x)
+  e2 <- (residuals(model) / (1 - h))^2
+  bread %*% crossprod(x * e2, x) %*% bread
+}
+
+# Linear combinations of the coefficients (dummy-coded conditions).
+confdiff_contrast_weights <- function(coef_names) {
+  w <- function(values) {
+    out <- setNames(rep(0, length(coef_names)), coef_names)
+    out[names(values)] <- values
+    out
+  }
+  list(
+    "Adjusted mean 0|0" = w(c("(Intercept)" = 1)),
+    "Adjusted mean 0|1" = w(c("(Intercept)" = 1, Personalization = 1)),
+    "Adjusted mean 1|0" = w(c("(Intercept)" = 1, Warmth = 1)),
+    "Adjusted mean 1|1" = w(c("(Intercept)" = 1, Warmth = 1, Personalization = 1, "Warmth:Personalization" = 1)),
+    "Warmth without contextualization (1|0 - 0|0)" = w(c(Warmth = 1)),
+    "Warmth with contextualization (1|1 - 0|1)" = w(c(Warmth = 1, "Warmth:Personalization" = 1)),
+    "Contextualization without warmth (0|1 - 0|0)" = w(c(Personalization = 1)),
+    "Contextualization with warmth (1|1 - 1|0)" = w(c(Personalization = 1, "Warmth:Personalization" = 1)),
+    "Warmth, averaged over contextualization" = w(c(Warmth = 1, "Warmth:Personalization" = 0.5)),
+    "Contextualization, averaged over warmth" = w(c(Personalization = 1, "Warmth:Personalization" = 0.5)),
+    "Interaction (W x C)" = w(c("Warmth:Personalization" = 1)),
+    "Warm and contextualized vs. baseline (1|1 - 0|0)" = w(c(Warmth = 1, Personalization = 1, "Warmth:Personalization" = 1))
+  )
+}
+
+confdiff_contrasts <- function(model, vcov_matrix, model_label) {
+  b <- coef(model)
+  weights <- confdiff_contrast_weights(names(b))
+  df_resid <- df.residual(model)
+  rows <- lapply(names(weights), function(term) {
+    l <- weights[[term]][names(b)]
+    est <- sum(l * b)
+    se <- sqrt(as.numeric(t(l) %*% vcov_matrix %*% l))
+    t_value <- est / se
+    data.frame(
+      model = model_label,
+      term = term,
+      estimate = est,
+      se = se,
+      ci_lower = est - qt(0.975, df_resid) * se,
+      ci_upper = est + qt(0.975, df_resid) * se,
+      df = df_resid,
+      t = t_value,
+      p = 2 * pt(-abs(t_value), df_resid),
+      stringsAsFactors = FALSE
+    )
+  })
+  dplyr::bind_rows(rows)
+}
+
+confdiff_formula <- as.formula(paste(
+  "Slider_Difference ~ Warmth * Personalization +",
+  paste(confdiff_covariates, collapse = " + ")
+))
+confdiff_lm <- lm(confdiff_formula, data = confdiff_data)
+confdiff_lm_raw <- lm(Slider_Difference ~ Warmth * Personalization, data = confdiff_data)
+
+confdiff_contrast_table <- dplyr::bind_rows(
+  confdiff_contrasts(confdiff_lm, vcov(confdiff_lm), "Covariates (Table A.2)"),
+  confdiff_contrasts(confdiff_lm, hc3_vcov(confdiff_lm), "Covariates, HC3 SEs"),
+  confdiff_contrasts(confdiff_lm_raw, vcov(confdiff_lm_raw), "No covariates")
+)
+# For one-df contrasts, F = t^2 and partial eta^2 = F / (F + df). Not
+# reported for the adjusted means, whose t tests the mean against zero.
+is_contrast <- !grepl("^Adjusted mean", confdiff_contrast_table$term)
+confdiff_contrast_table$F <- ifelse(is_contrast, confdiff_contrast_table$t^2, NA_real_)
+confdiff_contrast_table$partial_eta2 <- confdiff_contrast_table$F /
+  (confdiff_contrast_table$F + confdiff_contrast_table$df)
+
+cat("\n=== ConfDiff by condition (Appendix A, Table A.2, panel A) ===\n")
+print(confdiff_cell_table, row.names = FALSE, digits = 4)
+cat("\n=== ConfDiff adjusted means and contrasts (Table A.2, panel B; Figure A.1) ===\n")
+print(confdiff_contrast_table, row.names = FALSE, digits = 4)
+
+if (write_outputs) {
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  readr::write_csv(confdiff_cell_table, file.path(output_dir, "confdiff_cell_descriptives.csv"))
+  readr::write_csv(confdiff_contrast_table, file.path(output_dir, "confdiff_adjusted_means_contrasts.csv"))
+  cat(sprintf("\nWrote ConfDiff condition tables to %s\n", output_dir))
+}
+
